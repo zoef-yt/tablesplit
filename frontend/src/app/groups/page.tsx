@@ -1,42 +1,23 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Plus, Users, TrendingUp, Loader2 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
-import { useGroupStore } from '@/stores/groupStore';
-import { apiHelpers } from '@/lib/api';
-import { Group } from '@/types';
+import { useGroups } from '@/lib/hooks/useGroups';
+import { Button } from '@/components/ui/button';
 
 export default function GroupsPage() {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
-  const { groups, setGroups } = useGroupStore();
-  const [loading, setLoading] = useState(true);
-  const [showCreateModal, setShowCreateModal] = useState(false);
+  const { data: groups = [], isLoading } = useGroups();
 
-  useEffect(() => {
-    if (!user) {
-      router.push('/auth/login');
-      return;
-    }
+  if (!user) {
+    router.push('/auth/login');
+    return null;
+  }
 
-    fetchGroups();
-  }, [user]);
-
-  const fetchGroups = async () => {
-    try {
-      const response = await apiHelpers.get<Group[]>('/groups');
-      setGroups(response.data || []);
-    } catch (error) {
-      console.error('Failed to fetch groups:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-950 via-felt-900 to-slate-950 flex items-center justify-center">
         <Loader2 className="w-12 h-12 text-gold-500 animate-spin" />
@@ -63,13 +44,10 @@ export default function GroupsPage() {
             <Users className="w-20 h-20 text-gray-600 mx-auto mb-4" />
             <h2 className="text-2xl font-bold text-white mb-2">No groups yet</h2>
             <p className="text-gray-400 mb-6">Create your first group to start tracking expenses</p>
-            <button
-              onClick={() => router.push('/groups/create')}
-              className="px-6 py-3 bg-gold-500 text-slate-950 rounded-lg font-bold hover:bg-gold-400 transition-colors inline-flex items-center gap-2"
-            >
-              <Plus className="w-5 h-5" />
+            <Button onClick={() => router.push('/groups/create')}>
+              <Plus className="w-5 h-5 mr-2" />
               Create Group
-            </button>
+            </Button>
           </motion.div>
         ) : (
           <>

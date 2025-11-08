@@ -1,52 +1,71 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Coins, Mail, Lock, Loader2 } from 'lucide-react';
-import { api } from '@/lib/api';
-import { useAuthStore } from '@/stores/authStore';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { useLogin } from '@/lib/hooks/useAuth';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+
+const loginSchema = z.object({
+  email: z.string().email('Invalid email address'),
+  password: z.string().optional(),
+});
+
+type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
-  const router = useRouter();
-  const setAuth = useAuthStore((state) => state.setAuth);
-
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
   const [magicLinkSent, setMagicLinkSent] = useState(false);
+  const [emailForMagicLink, setEmailForMagicLink] = useState('');
 
-  const handleMagicLink = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
+  const loginMutation = useLogin();
 
+  const form = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: '',
+      password: '',
+    },
+  });
+
+  const onMagicLink = async (values: LoginFormValues) => {
     try {
-      await api.post('/auth/magic-link', { email });
+      await loginMutation.mutateAsync({ email: values.email });
+      setEmailForMagicLink(values.email);
       setMagicLinkSent(true);
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to send magic link');
-    } finally {
-      setLoading(false);
+    } catch (error: any) {
+      form.setError('root', {
+        message: error.response?.data?.error || 'Failed to send magic link',
+      });
     }
   };
 
-  const handlePasswordLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
+  const onPasswordLogin = async (values: LoginFormValues) => {
+    if (!values.password) {
+      form.setError('password', { message: 'Password is required' });
+      return;
+    }
 
     try {
-      const response = await api.post('/auth/login', { email, password });
-      const { user, token } = response.data.data;
-
-      setAuth(user, token);
-      router.push('/groups');
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Login failed');
-    } finally {
-      setLoading(false);
+      await loginMutation.mutateAsync({
+        email: values.email,
+        password: values.password,
+      });
+    } catch (error: any) {
+      form.setError('root', {
+        message: error.response?.data?.error || 'Login failed',
+      });
     }
   };
 
@@ -86,50 +105,58 @@ export default function LoginPage() {
               <Mail className="w-16 h-16 text-gold-500 mx-auto mb-4" />
               <h2 className="text-2xl font-bold text-white mb-2">Check your email!</h2>
               <p className="text-gray-300 mb-6">
-                We've sent a magic link to <strong>{email}</strong>. Click the link to log in.
+                We've sent a magic link to <strong>{emailForMagicLink}</strong>. Click the link to log in.
               </p>
-              <button
+              <Button
+                variant="ghost"
                 onClick={() => setMagicLinkSent(false)}
-                className="text-gold-500 hover:text-gold-400 underline"
+                className="text-gold-500"
               >
                 Try different email
-              </button>
+              </Button>
             </motion.div>
           ) : (
-            <>
+            <Form {...form}>
               {/* Magic Link Form */}
-              <form onSubmit={handleMagicLink} className="mb-6">
+              <form onSubmit={form.handleSubmit(onMagicLink)} className="mb-6">
                 <h2 className="text-xl font-bold text-white mb-4">Sign in with Magic Link</h2>
 
-                <div className="mb-4">
-                  <label className="block text-gray-300 mb-2">Email</label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                      className="w-full pl-10 pr-4 py-3 bg-slate-900/50 border border-gold-900/30 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gold-500 transition-colors"
-                      placeholder="you@example.com"
-                    />
-                  </div>
-                </div>
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                          <Input
+                            {...field}
+                            type="email"
+                            placeholder="you@example.com"
+                            className="pl-10"
+                          />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-                <button
+                <Button
                   type="submit"
-                  disabled={loading}
-                  className="w-full py-3 bg-gold-500 text-slate-950 rounded-lg font-bold hover:bg-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="w-full mt-4"
+                  disabled={loginMutation.isPending}
                 >
-                  {loading ? (
+                  {loginMutation.isPending ? (
                     <>
-                      <Loader2 className="w-5 h-5 animate-spin" />
+                      <Loader2 className="w-5 h-5 animate-spin mr-2" />
                       Sending...
                     </>
                   ) : (
                     'Send Magic Link'
                   )}
-                </button>
+                </Button>
               </form>
 
               {/* Divider */}
@@ -143,36 +170,45 @@ export default function LoginPage() {
               </div>
 
               {/* Password Login Form */}
-              <form onSubmit={handlePasswordLogin}>
-                <div className="mb-4">
-                  <label className="block text-gray-300 mb-2">Password</label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <input
-                      type="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="w-full pl-10 pr-4 py-3 bg-slate-900/50 border border-gold-900/30 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gold-500 transition-colors"
-                      placeholder="••••••••"
-                    />
-                  </div>
-                </div>
+              <form onSubmit={form.handleSubmit(onPasswordLogin)}>
+                <FormField
+                  control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Password</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                          <Input
+                            {...field}
+                            type="password"
+                            placeholder="••••••••"
+                            className="pl-10"
+                          />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-                {error && (
-                  <div className="mb-4 p-3 bg-red-500/20 border border-red-500/50 rounded-lg text-red-300 text-sm">
-                    {error}
+                {form.formState.errors.root && (
+                  <div className="mt-4 p-3 bg-red-500/20 border border-red-500/50 rounded-lg text-red-300 text-sm">
+                    {form.formState.errors.root.message}
                   </div>
                 )}
 
-                <button
+                <Button
                   type="submit"
-                  disabled={loading || !password}
-                  className="w-full py-3 bg-felt-500 text-white rounded-lg font-bold border-2 border-gold-700 hover:bg-felt-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  variant="outline"
+                  className="w-full mt-4"
+                  disabled={loginMutation.isPending}
                 >
                   Sign In
-                </button>
+                </Button>
               </form>
-            </>
+            </Form>
           )}
         </div>
       </motion.div>
