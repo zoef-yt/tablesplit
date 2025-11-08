@@ -1,110 +1,39 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Settings, Users as UsersIcon, Receipt, Loader2 } from 'lucide-react';
+import { ArrowLeft, Settings, Receipt, Loader2 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
-import { apiHelpers } from '@/lib/api';
-import { connectSocket, joinGroup, leaveGroup } from '@/lib/socket';
-import { Group, Balance, Expense } from '@/types';
+import { useGroup } from '@/lib/hooks/useGroups';
+import { useBalances, useExpenses, useCreateExpense } from '@/lib/hooks/useExpenses';
+import { useRealtimeUpdates } from '@/lib/hooks/useRealtimeUpdates';
 import { PokerTable } from '@/components/poker/PokerTable';
 import { ExpenseModal } from '@/components/forms/ExpenseModal';
-import { vibrate } from '@/lib/utils';
 
 export default function GroupDetailPage() {
   const params = useParams();
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
 
-  const [group, setGroup] = useState<Group | null>(null);
-  const [balances, setBalances] = useState<Balance[]>([]);
-  const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
 
   const groupId = params.id as string;
 
-  useEffect(() => {
-    if (!user) {
-      router.push('/auth/login');
-      return;
-    }
+  const { data: group, isLoading: groupLoading } = useGroup(groupId);
+  const { data: balances = [] } = useBalances(groupId);
+  const { data: expenses = [] } = useExpenses(groupId);
+  const createExpenseMutation = useCreateExpense(groupId);
 
-    fetchGroupData();
+  // Real-time updates via Socket.io
+  useRealtimeUpdates(groupId);
 
-    // Connect to socket and join group room
-    const socket = connectSocket();
-    joinGroup(groupId);
+  if (!user) {
+    router.push('/auth/login');
+    return null;
+  }
 
-    // Listen for real-time updates
-    socket.on('expense:created', handleExpenseCreated);
-    socket.on('payment:settled', handlePaymentSettled);
-
-    return () => {
-      leaveGroup(groupId);
-      socket.off('expense:created', handleExpenseCreated);
-      socket.off('payment:settled', handlePaymentSettled);
-    };
-  }, [user, groupId]);
-
-  const fetchGroupData = async () => {
-    try {
-      const [groupRes, balancesRes, expensesRes] = await Promise.all([
-        apiHelpers.get<Group>(`/groups/${groupId}`),
-        apiHelpers.get<Balance[]>(`/expenses/group/${groupId}/balances`),
-        apiHelpers.get<Expense[]>(`/expenses/group/${groupId}`),
-      ]);
-
-      setGroup(groupRes.data!);
-      setBalances(balancesRes.data || []);
-      setExpenses(expensesRes.data || []);
-    } catch (error) {
-      console.error('Failed to fetch group data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleExpenseCreated = (data: { expense: Expense; updatedBalances: Balance[] }) => {
-    setExpenses((prev) => [data.expense, ...prev]);
-    setBalances(data.updatedBalances);
-    vibrate([10, 50, 10]); // Haptic feedback
-  };
-
-  const handlePaymentSettled = (data: { from: string; to: string; amount: number }) => {
-    fetchGroupData(); // Refresh data
-    vibrate([10, 50, 10]);
-  };
-
-  const handleAddExpense = async (expenseData: {
-    description: string;
-    amount: number;
-    paidBy: string;
-    selectedMembers: string[];
-  }) => {
-    try {
-      const response = await apiHelpers.post('/expenses', {
-        groupId,
-        ...expenseData,
-      });
-
-      // Emit socket event for real-time update
-      const socket = connectSocket();
-      socket.emit('expense:created', {
-        groupId,
-        expense: response.data!.expense,
-        updatedBalances: response.data!.updatedBalances,
-      });
-
-      setShowExpenseModal(false);
-      vibrate(50);
-    } catch (error) {
-      console.error('Failed to create expense:', error);
-    }
-  };
-
-  if (loading) {
+  if (groupLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-950 via-felt-900 to-slate-950 flex items-center justify-center">
         <Loader2 className="w-12 h-12 text-gold-500 animate-spin" />
@@ -127,6 +56,20 @@ export default function GroupDetailPage() {
       </div>
     );
   }
+
+  const handleAddExpense = async (expenseData: {
+    description: string;
+    amount: number;
+    paidBy: string;
+    selectedMembers: string[];
+  }) => {
+    try {
+      await createExpenseMutation.mutateAsync(expenseData);
+      setShowExpenseModal(false);
+    } catch (error) {
+      console.error('Failed to create expense:', error);
+    }
+  };
 
   const membersWithUsers = group.members.map((m) => ({
     userId: m.userId._id || m.userId,
