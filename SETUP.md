@@ -99,6 +99,28 @@ cp .env.example .env
 # - SMTP credentials for magic link emails
 ```
 
+**IMPORTANT**: The backend now has **comprehensive environment validation**. If you're missing or have invalid environment variables, you'll see a detailed error message with:
+
+✅ Which variables are missing/invalid
+✅ Current values (sanitized for passwords)
+✅ Example values
+✅ Quick fix instructions
+
+Example error output:
+```
+❌ Environment Variable Validation Failed!
+
+1. JWT_SECRET
+   ❌ JWT_SECRET has an invalid value
+   Example: Run: openssl rand -base64 32
+
+2. SMTP_USER
+   ❌ SMTP_USER has an invalid value
+   Example: your-email@gmail.com
+```
+
+This makes it **crystal clear** what's wrong and how to fix it!
+
 ### Step 4: Start Development Environment
 
 #### Option A: Docker (Recommended)
