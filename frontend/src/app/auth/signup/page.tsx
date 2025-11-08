@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { motion } from 'framer-motion';
-import { Coins, Mail, Lock, User, Loader2 } from 'lucide-react';
+import { Wallet, Mail, Lock, User, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useMutation } from '@tanstack/react-query';
@@ -82,33 +82,39 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-felt-900 to-slate-950 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gray-950 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-gradient-to-br from-primary-900/20 via-transparent to-purple-900/20" />
+
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md"
+        transition={{ duration: 0.4 }}
+        className="relative w-full max-w-md"
       >
         {/* Logo */}
         <div className="text-center mb-8">
           <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ type: 'spring', stiffness: 200 }}
-            className="inline-block mb-4"
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ delay: 0.1, duration: 0.3 }}
+            className="inline-flex items-center justify-center w-16 h-16 mb-4 bg-gradient-to-br from-primary-500 to-purple-600 rounded-2xl shadow-lg"
           >
-            <div className="w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-gold-500 to-gold-700 flex items-center justify-center shadow-glow-gold-strong">
-              <Coins className="w-10 h-10 text-slate-950" />
-            </div>
+            <Wallet className="w-8 h-8 text-white" />
           </motion.div>
-          <h1 className="text-4xl font-bold text-white mb-2">
-            Table<span className="text-gold-500">Split</span>
+          <h1 className="text-3xl font-bold text-white mb-2">
+            TableSplit
           </h1>
-          <p className="text-gray-400">Join the table</p>
+          <p className="text-gray-400 text-sm">Create your account</p>
         </div>
 
         {/* Signup Card */}
-        <div className="bg-felt-700/50 backdrop-blur-sm border border-gold-900/30 rounded-2xl p-8 shadow-glow-gold">
-          <h2 className="text-2xl font-bold text-white mb-6">Create Account</h2>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.2, duration: 0.3 }}
+          className="bg-gray-900/50 backdrop-blur-xl border border-gray-800 rounded-2xl p-8 shadow-2xl"
+        >
+          <h2 className="text-2xl font-bold text-white mb-6">Sign Up</h2>
 
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -118,15 +124,15 @@ export default function SignupPage() {
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Name</FormLabel>
+                    <FormLabel className="text-gray-300">Name</FormLabel>
                     <FormControl>
                       <div className="relative">
-                        <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                        <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
                         <Input
                           {...field}
                           type="text"
                           placeholder="John Doe"
-                          className="pl-10"
+                          className="pl-10 bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 focus:border-primary-500"
                         />
                       </div>
                     </FormControl>
@@ -141,15 +147,15 @@ export default function SignupPage() {
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email</FormLabel>
+                    <FormLabel className="text-gray-300">Email</FormLabel>
                     <FormControl>
                       <div className="relative">
-                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
                         <Input
                           {...field}
                           type="email"
                           placeholder="you@example.com"
-                          className="pl-10"
+                          className="pl-10 bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 focus:border-primary-500"
                         />
                       </div>
                     </FormControl>
@@ -164,15 +170,15 @@ export default function SignupPage() {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Password</FormLabel>
+                    <FormLabel className="text-gray-300">Password</FormLabel>
                     <FormControl>
                       <div className="relative">
-                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
                         <Input
                           {...field}
                           type="password"
-                          placeholder="••••••••"
-                          className="pl-10"
+                          placeholder=""""""""""
+                          className="pl-10 bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 focus:border-primary-500"
                         />
                       </div>
                     </FormControl>
@@ -187,15 +193,15 @@ export default function SignupPage() {
                 name="confirmPassword"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Confirm Password</FormLabel>
+                    <FormLabel className="text-gray-300">Confirm Password</FormLabel>
                     <FormControl>
                       <div className="relative">
-                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
                         <Input
                           {...field}
                           type="password"
-                          placeholder="••••••••"
-                          className="pl-10"
+                          placeholder=""""""""""
+                          className="pl-10 bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 focus:border-primary-500"
                         />
                       </div>
                     </FormControl>
@@ -206,15 +212,19 @@ export default function SignupPage() {
 
               {/* Error Message */}
               {form.formState.errors.root && (
-                <div className="p-3 bg-red-500/20 border border-red-500/50 rounded-lg text-red-300 text-sm">
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="p-3 bg-red-500/10 border border-red-500/50 rounded-lg text-red-400 text-sm"
+                >
                   {form.formState.errors.root.message}
-                </div>
+                </motion.div>
               )}
 
               {/* Submit Button */}
               <Button
                 type="submit"
-                className="w-full"
+                className="w-full bg-primary-600 hover:bg-primary-700 text-white"
                 disabled={signupMutation.isPending}
               >
                 {signupMutation.isPending ? (
@@ -233,12 +243,12 @@ export default function SignupPage() {
           <div className="mt-6 text-center">
             <p className="text-gray-400 text-sm">
               Already have an account?{' '}
-              <Link href="/auth/login" className="text-gold-500 hover:text-gold-400 font-medium">
+              <Link href="/auth/login" className="text-primary-500 hover:text-primary-400 font-medium">
                 Sign In
               </Link>
             </p>
           </div>
-        </div>
+        </motion.div>
       </motion.div>
     </div>
   );

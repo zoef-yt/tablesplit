@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Coins, Mail, Lock, Loader2 } from 'lucide-react';
+import { Wallet, Mail, Lock, Loader2, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -71,47 +71,55 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-felt-900 to-slate-950 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gray-950 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-gradient-to-br from-primary-900/20 via-transparent to-purple-900/20" />
+
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md"
+        transition={{ duration: 0.4 }}
+        className="relative w-full max-w-md"
       >
         {/* Logo */}
         <div className="text-center mb-8">
           <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ type: 'spring', stiffness: 200 }}
-            className="inline-block mb-4"
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ delay: 0.1, duration: 0.3 }}
+            className="inline-flex items-center justify-center w-16 h-16 mb-4 bg-gradient-to-br from-primary-500 to-purple-600 rounded-2xl shadow-lg"
           >
-            <div className="w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-gold-500 to-gold-700 flex items-center justify-center shadow-glow-gold-strong">
-              <Coins className="w-10 h-10 text-slate-950" />
-            </div>
+            <Wallet className="w-8 h-8 text-white" />
           </motion.div>
-          <h1 className="text-4xl font-bold text-white mb-2">
-            Table<span className="text-gold-500">Split</span>
+          <h1 className="text-3xl font-bold text-white mb-2">
+            TableSplit
           </h1>
-          <p className="text-gray-400">Welcome back to the table</p>
+          <p className="text-gray-400 text-sm">Split bills, not friendships</p>
         </div>
 
         {/* Login Card */}
-        <div className="bg-felt-700/50 backdrop-blur-sm border border-gold-900/30 rounded-2xl p-8 shadow-glow-gold">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.2, duration: 0.3 }}
+          className="bg-gray-900/50 backdrop-blur-xl border border-gray-800 rounded-2xl p-8 shadow-2xl"
+        >
           {magicLinkSent ? (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               className="text-center"
             >
-              <Mail className="w-16 h-16 text-gold-500 mx-auto mb-4" />
+              <div className="w-16 h-16 bg-primary-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Mail className="w-8 h-8 text-primary-500" />
+              </div>
               <h2 className="text-2xl font-bold text-white mb-2">Check your email!</h2>
-              <p className="text-gray-300 mb-6">
-                We've sent a magic link to <strong>{emailForMagicLink}</strong>. Click the link to log in.
+              <p className="text-gray-400 mb-6">
+                We've sent a magic link to <strong className="text-white">{emailForMagicLink}</strong>
               </p>
               <Button
                 variant="ghost"
                 onClick={() => setMagicLinkSent(false)}
-                className="text-gold-500"
+                className="text-primary-500 hover:text-primary-400"
               >
                 Try different email
               </Button>
@@ -120,22 +128,25 @@ export default function LoginPage() {
             <Form {...form}>
               {/* Magic Link Form */}
               <form onSubmit={form.handleSubmit(onMagicLink)} className="mb-6">
-                <h2 className="text-xl font-bold text-white mb-4">Sign in with Magic Link</h2>
+                <div className="flex items-center gap-2 mb-4">
+                  <Sparkles className="w-5 h-5 text-primary-500" />
+                  <h2 className="text-lg font-semibold text-white">Quick Sign In</h2>
+                </div>
 
                 <FormField
                   control={form.control}
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Email</FormLabel>
+                      <FormLabel className="text-gray-300">Email</FormLabel>
                       <FormControl>
                         <div className="relative">
-                          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
                           <Input
                             {...field}
                             type="email"
                             placeholder="you@example.com"
-                            className="pl-10"
+                            className="pl-10 bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 focus:border-primary-500"
                           />
                         </div>
                       </FormControl>
@@ -146,7 +157,7 @@ export default function LoginPage() {
 
                 <Button
                   type="submit"
-                  className="w-full mt-4"
+                  className="w-full mt-4 bg-primary-600 hover:bg-primary-700 text-white"
                   disabled={loginMutation.isPending}
                 >
                   {loginMutation.isPending ? (
@@ -163,10 +174,10 @@ export default function LoginPage() {
               {/* Divider */}
               <div className="relative mb-6">
                 <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gold-900/30" />
+                  <div className="w-full border-t border-gray-800" />
                 </div>
                 <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-felt-700/50 text-gray-400">Or with password</span>
+                  <span className="px-2 bg-gray-900/50 text-gray-500">Or continue with password</span>
                 </div>
               </div>
 
@@ -177,15 +188,15 @@ export default function LoginPage() {
                   name="password"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Password</FormLabel>
+                      <FormLabel className="text-gray-300">Password</FormLabel>
                       <FormControl>
                         <div className="relative">
-                          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
                           <Input
                             {...field}
                             type="password"
                             placeholder="••••••••"
-                            className="pl-10"
+                            className="pl-10 bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 focus:border-primary-500"
                           />
                         </div>
                       </FormControl>
@@ -195,18 +206,29 @@ export default function LoginPage() {
                 />
 
                 {form.formState.errors.root && (
-                  <div className="mt-4 p-3 bg-red-500/20 border border-red-500/50 rounded-lg text-red-300 text-sm">
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mt-4 p-3 bg-red-500/10 border border-red-500/50 rounded-lg text-red-400 text-sm"
+                  >
                     {form.formState.errors.root.message}
-                  </div>
+                  </motion.div>
                 )}
 
                 <Button
                   type="submit"
                   variant="outline"
-                  className="w-full mt-4"
+                  className="w-full mt-4 border-gray-700 text-white hover:bg-gray-800"
                   disabled={loginMutation.isPending}
                 >
-                  Sign In
+                  {loginMutation.isPending ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                      Signing in...
+                    </>
+                  ) : (
+                    'Sign In'
+                  )}
                 </Button>
               </form>
             </Form>
@@ -217,13 +239,13 @@ export default function LoginPage() {
             <div className="mt-6 text-center">
               <p className="text-gray-400 text-sm">
                 Don't have an account?{' '}
-                <Link href="/auth/signup" className="text-gold-500 hover:text-gold-400 font-medium">
+                <Link href="/auth/signup" className="text-primary-500 hover:text-primary-400 font-medium">
                   Sign Up
                 </Link>
               </p>
             </div>
           )}
-        </div>
+        </motion.div>
       </motion.div>
     </div>
   );
