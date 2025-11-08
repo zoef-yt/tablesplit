@@ -60,9 +60,10 @@ All notable changes to TableSplit will be documented in this file.
 - [ ] Add percentage & custom splits
 - [ ] Implement receipt photo uploads
 - [ ] Add expense categories and filtering
-- [ ] Currency conversion support
+- [ ] Currency conversion support (INR, USD, EUR, etc.)
 - [ ] Recurring expenses
-- [ ] Payment integrations (Venmo, PayPal)
+- [ ] Payment integrations (UPI, PhonePe, Google Pay, Paytm)
+- [ ] Quick settlement with UPI deep links
 - [ ] Export history (CSV/PDF)
 - [ ] Group chat feature
 - [ ] Achievements/gamification

@@ -5,6 +5,7 @@ export interface IUser extends Document {
   name: string;
   avatar?: string;
   passwordHash?: string;
+  upiId?: string; // For Indian UPI payments (e.g., user@paytm, user@phonepe)
   createdAt: Date;
   lastActive: Date;
 }
@@ -31,6 +32,13 @@ const userSchema = new Schema<IUser>(
     passwordHash: {
       type: String,
       required: false, // Optional for magic link users
+    },
+    upiId: {
+      type: String,
+      required: false,
+      trim: true,
+      lowercase: true,
+      match: /^[\w.-]+@[\w.-]+$/, // Basic UPI ID validation (user@provider)
     },
     lastActive: {
       type: Date,

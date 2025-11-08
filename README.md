@@ -21,10 +21,11 @@ TableSplit reimagines the mundane task of splitting bills as a cinematic ritual.
 ### Coming Soon
 - 📊 Percentage & custom splits
 - 📸 Receipt photo uploads
-- 💱 Currency conversion
+- 💱 Currency conversion (INR, USD, EUR, etc.)
 - 🔄 Recurring expenses
 - 📈 Expense analytics
-- 💳 Payment integrations (Venmo, PayPal)
+- 💳 Payment integrations (UPI, PhonePe, Google Pay, Paytm)
+- 🔗 Quick settlement with UPI deep links
 
 ---
 
@@ -501,7 +502,7 @@ MIT License - feel free to use this project however you'd like!
 
 ## 🙏 Acknowledgments
 
-- Inspired by Splitwise, Venmo, and poker nights with friends
+- Inspired by Splitwise and poker nights with friends
 - Built with ❤️ using modern web technologies
 - Special thanks to the Next.js, React, and Express communities
 

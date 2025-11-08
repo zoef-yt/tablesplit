@@ -4,6 +4,7 @@ export interface User {
   email: string;
   name: string;
   avatar?: string;
+  upiId?: string; // For Indian UPI payments (e.g., user@paytm, user@phonepe)
   createdAt: Date;
   lastActive: Date;
 }
