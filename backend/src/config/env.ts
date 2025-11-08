@@ -1,8 +1,11 @@
 import dotenv from 'dotenv';
+import path from 'path';
 import { logger } from '../utils/logger';
 
-// Load environment variables
-dotenv.config();
+// Load environment variables from backend/.env file
+// __dirname at runtime: backend/dist/config/
+// ../../.env resolves to backend/.env
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 interface EnvConfig {
   // MongoDB

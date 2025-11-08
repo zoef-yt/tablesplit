@@ -1,57 +1,12 @@
 # 🔧 TableSplit Setup Guide
 
-## ⚠️ IMPORTANT: npm Workspaces Setup
+## ⚠️ IMPORTANT: Standalone Projects
 
-This is a **npm workspaces monorepo**. Dependencies MUST be installed from the root directory only.
+This repository contains **TWO INDEPENDENT PROJECTS**:
+- **`backend/`** - Express.js API (runs standalone)
+- **`frontend/`** - Next.js app (runs standalone)
 
----
-
-## 🚨 If You're Getting Module Errors
-
-If you're seeing errors like:
-- `Cannot find module 'es-errors/type.js'`
-- `Cannot find module 'minimist/index.js'`
-- `MODULE_NOT_FOUND` errors
-
-**You have a corrupted workspace setup.** Follow these steps:
-
-### Fix Steps (Windows - Git Bash/PowerShell)
-
-```bash
-# 1. Navigate to ROOT directory
-cd F:\zoef\synthing\personal-project\tablesplit
-
-# 2. Clean everything
-rm -rf node_modules
-rm -rf frontend/node_modules
-rm -rf backend/node_modules
-rm -rf package-lock.json
-rm -rf frontend/package-lock.json
-rm -rf backend/package-lock.json
-
-# 3. Install from ROOT only
-npm install
-
-# 4. Verify installation
-npm ls --depth=0
-```
-
-### Fix Steps (Linux/Mac)
-
-```bash
-# 1. Navigate to ROOT directory
-cd /path/to/tablesplit
-
-# 2. Clean everything
-rm -rf node_modules frontend/node_modules backend/node_modules
-rm -rf package-lock.json frontend/package-lock.json backend/package-lock.json
-
-# 3. Install from ROOT only
-npm install
-
-# 4. Verify installation
-npm ls --depth=0
-```
+Each project has its own `node_modules` and can be deployed separately. They communicate via environment variables.
 
 ---
 
@@ -60,7 +15,7 @@ npm ls --depth=0
 ### Prerequisites
 - Node.js 20+
 - npm 10+
-- Docker & Docker Compose (optional)
+- Docker & Docker Compose (optional for MongoDB/Redis)
 
 ### Step 1: Clone Repository
 
@@ -71,42 +26,71 @@ cd tablesplit
 
 ### Step 2: Install Dependencies
 
+**Install each project independently:**
+
 ```bash
-# FROM ROOT DIRECTORY ONLY!
+# Install backend dependencies
+cd backend
+npm install
+
+# Install frontend dependencies
+cd ../frontend
 npm install
 ```
 
-**❌ DO NOT DO THIS:**
-```bash
-cd frontend && npm install  # WRONG!
-cd backend && npm install   # WRONG!
-```
+**OR use the convenience script from root:**
 
-**✅ ONLY DO THIS:**
 ```bash
 # From root directory
-npm install
+npm run install:all
 ```
 
-### Step 3: Environment Setup
+### Step 3: Backend Environment Setup
 
 ```bash
+# Navigate to backend
+cd backend
+
 # Copy environment template
 cp .env.example .env
 
-# Edit .env and set required values:
-# - JWT_SECRET (generate with: openssl rand -base64 32)
-# - SMTP credentials for magic link emails
+# Edit .env and set required values
 ```
 
-**IMPORTANT**: The backend now has **comprehensive environment validation**. If you're missing or have invalid environment variables, you'll see a detailed error message with:
+**Required backend environment variables:**
 
-✅ Which variables are missing/invalid
-✅ Current values (sanitized for passwords)
-✅ Example values
-✅ Quick fix instructions
+```env
+# MongoDB
+MONGODB_URI=mongodb://localhost:27017/tablesplit
 
-Example error output:
+# Redis
+REDIS_URL=redis://localhost:6379
+
+# JWT Secret (IMPORTANT: Generate a secure key!)
+JWT_SECRET=<run: openssl rand -base64 32>
+
+# Email (SMTP) - Required for magic links
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your-email@gmail.com
+SMTP_PASS=your-app-specific-password
+SMTP_FROM=TableSplit <noreply@tablesplit.app>
+
+# URLs
+FRONTEND_URL=http://localhost:3000
+BACKEND_URL=http://localhost:4000
+
+# Environment
+NODE_ENV=development
+PORT=4000
+
+# Token expiry (in seconds)
+MAGIC_LINK_EXPIRY=900
+SESSION_EXPIRY=604800
+```
+
+**The backend has comprehensive environment validation!** If you're missing or have invalid variables, you'll see:
+
 ```
 ❌ Environment Variable Validation Failed!
 
@@ -119,22 +103,45 @@ Example error output:
    Example: your-email@gmail.com
 ```
 
-This makes it **crystal clear** what's wrong and how to fix it!
-
-### Step 4: Start Development Environment
-
-#### Option A: Docker (Recommended)
+### Step 4: Frontend Environment Setup
 
 ```bash
-# Start all services (MongoDB, Redis, Frontend, Backend)
-npm run docker:up
+# Navigate to frontend
+cd frontend
 
-# Access at:
-# - Frontend: http://localhost:3000
-# - Backend: http://localhost:4000
+# Copy environment template
+cp .env.local.example .env.local
+
+# Edit .env.local
 ```
 
-#### Option B: Local Development
+**Required frontend environment variables:**
+
+```env
+# Backend API URL
+NEXT_PUBLIC_API_URL=http://localhost:4000/api
+
+# Socket.io URL (for real-time features)
+NEXT_PUBLIC_SOCKET_URL=http://localhost:4000
+
+# Environment
+NODE_ENV=development
+```
+
+### Step 5: Start Services
+
+#### Option A: Docker (Recommended for MongoDB + Redis)
+
+```bash
+# From root directory
+docker-compose up -d
+
+# This starts:
+# - MongoDB on localhost:27017
+# - Redis on localhost:6379
+```
+
+#### Option B: Local MongoDB + Redis
 
 ```bash
 # Terminal 1: Start MongoDB
@@ -142,114 +149,215 @@ mongod --dbpath ./data/db
 
 # Terminal 2: Start Redis
 redis-server
+```
 
-# Terminal 3: Start Backend
-npm run dev:backend
+### Step 6: Start Backend
 
-# Terminal 4: Start Frontend
-npm run dev:frontend
+```bash
+# Navigate to backend
+cd backend
 
-# Or run both concurrently:
+# Start development server
 npm run dev
+
+# Backend will run on http://localhost:4000
+```
+
+### Step 7: Start Frontend
+
+```bash
+# Navigate to frontend (in a new terminal)
+cd frontend
+
+# Start development server
+npm run dev
+
+# Frontend will run on http://localhost:3000
 ```
 
 ---
 
-## 📁 Workspace Structure
+## 🚀 Convenience Scripts (from root)
+
+The root `package.json` provides optional convenience scripts:
+
+```bash
+# Start both frontend and backend concurrently
+npm run dev
+
+# Build both projects
+npm run build
+
+# Run tests for both
+npm test
+
+# Install dependencies for both
+npm run install:all
+```
+
+**Note:** These are just shortcuts. You can always run each project independently.
+
+---
+
+## 📦 Project Structure
 
 ```
 tablesplit/
-├── package.json          # Root workspace configuration
-├── node_modules/         # Shared dependencies (managed by root)
-├── frontend/
-│   ├── package.json      # Frontend-specific dependencies
-│   └── (no node_modules) # Hoisted to root
-└── backend/
-    ├── package.json      # Backend-specific dependencies
-    └── (no node_modules) # Hoisted to root
+├── backend/              # Standalone Express.js API
+│   ├── .env             # Backend environment variables (gitignored)
+│   ├── .env.example     # Backend env template
+│   ├── package.json     # Backend dependencies
+│   ├── node_modules/    # Backend dependencies (independent)
+│   └── src/             # Backend source code
+│
+├── frontend/            # Standalone Next.js app
+│   ├── .env.local       # Frontend environment variables (gitignored)
+│   ├── .env.local.example  # Frontend env template
+│   ├── package.json     # Frontend dependencies
+│   ├── node_modules/    # Frontend dependencies (independent)
+│   └── src/             # Frontend source code
+│
+├── docker-compose.yml   # Optional: MongoDB + Redis
+├── package.json         # Root convenience scripts only
+└── README.md
 ```
 
 ---
 
 ## 🐛 Common Issues
 
-### Issue: "Cannot find module" errors
+### Issue: "Cannot find module" errors in backend
 
-**Cause**: Running `npm install` inside frontend/backend instead of root
+**Cause**: Missing dependencies
 
-**Fix**: Delete all node_modules and package-lock.json files, then run `npm install` from root only
+**Fix**:
+```bash
+cd backend
+rm -rf node_modules package-lock.json
+npm install
+```
 
-### Issue: Backend/Frontend won't start
+### Issue: "Cannot find module" errors in frontend
 
-**Cause**: Environment variables not set
+**Cause**: Missing dependencies
 
-**Fix**: Copy `.env.example` to `.env` and fill in required values
+**Fix**:
+```bash
+cd frontend
+rm -rf node_modules package-lock.json
+npm install
+```
+
+### Issue: Backend env validation errors
+
+**Cause**: Missing or invalid environment variables in `backend/.env`
+
+**Fix**:
+1. Ensure `backend/.env` exists (copy from `backend/.env.example`)
+2. Replace all placeholders (no "your-", "change-this", etc.)
+3. Generate JWT_SECRET: `openssl rand -base64 32`
+
+### Issue: Frontend can't connect to backend
+
+**Cause**: Wrong API URL in `frontend/.env.local`
+
+**Fix**: Ensure `NEXT_PUBLIC_API_URL=http://localhost:4000/api`
 
 ### Issue: Database connection errors
 
 **Cause**: MongoDB/Redis not running
 
 **Fix**:
-- Docker: `npm run docker:up`
+- Docker: `docker-compose up -d`
 - Local: Start MongoDB and Redis manually
+
+---
+
+## 🚢 Deployment
+
+### Backend Deployment (e.g., Railway, Render, Heroku)
+
+1. Deploy `backend/` folder
+2. Set environment variables in your hosting platform
+3. Ensure MongoDB and Redis are accessible
+4. Set `FRONTEND_URL` to your frontend domain
+
+### Frontend Deployment (e.g., Vercel, Netlify)
+
+1. Deploy `frontend/` folder
+2. Set `NEXT_PUBLIC_API_URL` to your backend domain
+3. Set `NEXT_PUBLIC_SOCKET_URL` to your backend domain
+
+**Example production env:**
+
+Backend:
+```env
+FRONTEND_URL=https://tablesplit.vercel.app
+BACKEND_URL=https://api.tablesplit.com
+```
+
+Frontend:
+```env
+NEXT_PUBLIC_API_URL=https://api.tablesplit.com/api
+NEXT_PUBLIC_SOCKET_URL=https://api.tablesplit.com
+```
 
 ---
 
 ## 🧪 Verify Installation
 
+### Test Backend
+
 ```bash
-# Check workspace structure
-npm ls --depth=0
+cd backend
+npm run build
+# Should compile without errors
 
-# Should show:
-# tablesplit@1.0.0
-# ├── concurrently@8.2.2
-# ├── tablesplit-backend@1.0.0 -> ./backend
-# └── tablesplit-frontend@1.0.0 -> ./frontend
-
-# Test frontend build
-npm run build:frontend
-
-# Test backend build
-npm run build:backend
+# Start backend
+npm run dev
+# Should show: 🎰 TableSplit backend running on port 4000
 ```
+
+### Test Frontend
+
+```bash
+cd frontend
+npm run build
+# Should build without errors
+
+# Start frontend
+npm run dev
+# Should show: ▲ Next.js 15.x.x
+```
+
+### Test Connection
+
+1. Open http://localhost:3000
+2. Try to sign up or log in
+3. Check browser console for API connection
+4. Backend should show incoming requests
 
 ---
 
-## 📚 Available Scripts
+## 💡 Key Differences from Monorepo
 
-From **ROOT directory only**:
+❌ **DO NOT** run `npm install` from root (it won't install project dependencies)
 
+✅ **DO** install in each project:
 ```bash
-# Development
-npm run dev              # Start both frontend & backend
-npm run dev:frontend     # Start frontend only
-npm run dev:backend      # Start backend only
-
-# Build
-npm run build            # Build both
-npm run build:frontend   # Build frontend only
-npm run build:backend    # Build backend only
-
-# Docker
-npm run docker:up        # Start all services
-npm run docker:down      # Stop all services
-npm run docker:build     # Rebuild and start
-
-# Testing
-npm test                 # Run all tests
-npm run test:frontend    # Frontend tests
-npm run test:backend     # Backend tests
+cd backend && npm install
+cd frontend && npm install
 ```
 
----
+❌ **DO NOT** expect shared `node_modules`
 
-## 💡 Tips
+✅ **DO** expect independent `node_modules` in each folder
 
-1. **Always work from root directory** for npm commands
-2. **Use `npm run dev`** instead of cd-ing into frontend/backend
-3. **If in doubt, clean and reinstall** from root
-4. **Check Docker logs** if services fail: `docker-compose logs -f`
+❌ **DO NOT** put `.env` in root
+
+✅ **DO** create:
+- `backend/.env` for backend
+- `frontend/.env.local` for frontend
 
 ---
 
@@ -257,16 +365,20 @@ npm run test:backend     # Backend tests
 
 1. Verify Node.js version: `node --version` (should be 20+)
 2. Verify npm version: `npm --version` (should be 10+)
-3. Check `.env` file exists and has all required values
+3. Check both `.env` files exist with correct values
 4. Ensure MongoDB and Redis are running
-5. Check Docker is running (for docker setup)
+5. Check backend logs for detailed error messages
 
-If all else fails, try a complete clean reinstall:
+**For a complete clean restart:**
 
 ```bash
-rm -rf node_modules frontend/node_modules backend/node_modules
-rm -rf package-lock.json frontend/package-lock.json backend/package-lock.json
-rm -rf frontend/.next frontend/dist backend/dist
-npm cache clean --force
+# Clean backend
+cd backend
+rm -rf node_modules package-lock.json dist
+npm install
+
+# Clean frontend
+cd ../frontend
+rm -rf node_modules package-lock.json .next
 npm install
 ```
