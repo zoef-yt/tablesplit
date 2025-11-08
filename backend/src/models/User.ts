@@ -38,7 +38,10 @@ const userSchema = new Schema<IUser>(
       required: false,
       trim: true,
       lowercase: true,
-      match: /^[\w.-]+@[\w.-]+$/, // Basic UPI ID validation (user@provider)
+      // UPI ID format: username@provider (e.g., john.doe@paytm, alice123@phonepe)
+      // Username: 2-256 chars (alphanumeric, dots, hyphens)
+      // Provider: 3-64 chars (letters only, starting with letter)
+      match: /^[a-zA-Z0-9.-]{2,256}@[a-zA-Z][a-zA-Z]{2,64}$/,
     },
     lastActive: {
       type: Date,
