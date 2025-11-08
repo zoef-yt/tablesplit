@@ -1,0 +1,85 @@
+version: '3.8'
+
+services:
+  # Frontend - Next.js 15
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: tablesplit-frontend
+    ports:
+      - '3000:3000'
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=http://backend:4000
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - tablesplit-network
+
+  # Backend - Express + TypeScript
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: tablesplit-backend
+    ports:
+      - '4000:4000'
+    environment:
+      - NODE_ENV=production
+      - MONGODB_URI=mongodb://mongo:27017/tablesplit
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASS=${SMTP_PASS}
+      - SMTP_FROM=${SMTP_FROM:-TableSplit <noreply@tablesplit.app>}
+      - FRONTEND_URL=http://frontend:3000
+      - MAGIC_LINK_EXPIRY=900
+      - SESSION_EXPIRY=604800
+    depends_on:
+      - mongo
+      - redis
+    restart: unless-stopped
+    networks:
+      - tablesplit-network
+    volumes:
+      - ./backend/logs:/app/logs
+
+  # MongoDB Database
+  mongo:
+    image: mongo:7-alpine
+    container_name: tablesplit-mongo
+    ports:
+      - '27017:27017'
+    volumes:
+      - mongo-data:/data/db
+    restart: unless-stopped
+    networks:
+      - tablesplit-network
+    command: --quiet
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: tablesplit-redis
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    networks:
+      - tablesplit-network
+    command: redis-server --appendonly yes --save 60 1
+
+volumes:
+  mongo-data:
+    driver: local
+  redis-data:
+    driver: local
+
+networks:
+  tablesplit-network:
+    driver: bridge
