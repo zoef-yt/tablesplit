@@ -8,6 +8,25 @@ import { logger } from '../utils/logger';
 const router = Router();
 
 /**
+ * POST /api/auth/signup
+ * Sign up with email, name, and password
+ */
+router.post('/signup', validate(schemas.signup), async (req, res, next) => {
+  try {
+    const { email, name, password } = req.body;
+
+    const { user, token } = await authService.signup(email, name, password);
+
+    res.status(201).json({
+      success: true,
+      data: { user, token },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
  * POST /api/auth/login
  * Login with email and password
  */

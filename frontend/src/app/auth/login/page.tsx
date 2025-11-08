@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Coins, Mail, Lock, Loader2 } from 'lucide-react';
+import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -209,6 +210,18 @@ export default function LoginPage() {
                 </Button>
               </form>
             </Form>
+          )}
+
+          {/* Signup Link */}
+          {!magicLinkSent && (
+            <div className="mt-6 text-center">
+              <p className="text-gray-400 text-sm">
+                Don't have an account?{' '}
+                <Link href="/auth/signup" className="text-gold-500 hover:text-gold-400 font-medium">
+                  Sign Up
+                </Link>
+              </p>
+            </div>
           )}
         </div>
       </motion.div>

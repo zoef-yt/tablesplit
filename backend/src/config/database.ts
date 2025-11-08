@@ -1,7 +1,8 @@
 import mongoose from 'mongoose';
 import { logger } from '../utils/logger';
+import { env } from './env';
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/tablesplit';
+const MONGODB_URI = env.MONGODB_URI;
 
 export async function connectDatabase(): Promise<void> {
   try {

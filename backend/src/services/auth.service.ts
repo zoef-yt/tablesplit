@@ -5,12 +5,48 @@ import { User, IUser } from '../models/User';
 import { redisClient } from '../config/redis';
 import { UnauthorizedError, BadRequestError, ConflictError } from '../middleware/errorHandler';
 import { logger } from '../utils/logger';
+import { env } from '../config/env';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
-const MAGIC_LINK_EXPIRY = parseInt(process.env.MAGIC_LINK_EXPIRY || '900'); // 15 minutes
-const SESSION_EXPIRY = parseInt(process.env.SESSION_EXPIRY || '604800'); // 7 days
+const JWT_SECRET = env.JWT_SECRET;
+const MAGIC_LINK_EXPIRY = env.MAGIC_LINK_EXPIRY;
+const SESSION_EXPIRY = env.SESSION_EXPIRY;
 
 export class AuthService {
+  /**
+   * Sign up with email, name, and password
+   */
+  async signup(email: string, name: string, password: string): Promise<{ user: IUser; token: string }> {
+    const normalizedEmail = email.toLowerCase();
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ email: normalizedEmail });
+
+    if (existingUser) {
+      throw new ConflictError('User with this email already exists');
+    }
+
+    if (password.length < 6) {
+      throw new BadRequestError('Password must be at least 6 characters');
+    }
+
+    // Hash password
+    const passwordHash = await bcrypt.hash(password, 12);
+
+    // Create new user
+    const user = await User.create({
+      email: normalizedEmail,
+      name,
+      passwordHash,
+    });
+
+    logger.info(`New user signed up: ${user._id}`);
+
+    // Generate JWT token
+    const token = this.generateToken(user._id.toString());
+
+    return { user, token };
+  }
+
   /**
    * Login with email and password
    */
