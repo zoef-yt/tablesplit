@@ -99,10 +99,12 @@ TableSplit reimagines the mundane task of splitting bills as a cinematic ritual.
 
 1. **Install dependencies**
    ```bash
+   # IMPORTANT: This is a npm workspaces monorepo
+   # Only run npm install from the ROOT directory
    npm install
-   cd frontend && npm install
-   cd ../backend && npm install
    ```
+
+   **⚠️ DO NOT run npm install inside frontend/ or backend/ directories individually - this will break the workspace setup!**
 
 2. **Start MongoDB and Redis**
    ```bash
