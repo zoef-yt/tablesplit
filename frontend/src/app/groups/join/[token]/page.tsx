@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { Loader2, Users, CheckCircle, XCircle } from "lucide-react";
 import { useAuthStore } from "@/lib/store/auth";
@@ -15,21 +15,24 @@ export default function JoinGroupPage() {
 	const user = useAuthStore((state) => state.user);
 	const isHydrated = useAuthStore((state) => state.isHydrated);
 	const token = params.token as string;
+	const hasAttemptedJoin = useRef(false);
 
 	const joinGroupMutation = useJoinGroup();
 
-	// Auto-join when authenticated
+	// Auto-join when authenticated (only once)
 	useEffect(() => {
 		if (
 			isHydrated &&
 			user &&
 			token &&
+			!hasAttemptedJoin.current &&
 			!joinGroupMutation.isSuccess &&
 			!joinGroupMutation.isError
 		) {
+			hasAttemptedJoin.current = true;
 			joinGroupMutation.mutate(token);
 		}
-	}, [user, isHydrated, token, joinGroupMutation]);
+	}, [user, isHydrated, token]);
 
 	// Redirect to login if not authenticated
 	useEffect(() => {

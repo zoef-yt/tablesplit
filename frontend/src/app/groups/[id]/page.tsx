@@ -291,6 +291,54 @@ export default function GroupDetailPage() {
 					</motion.div>
 				)}
 
+				{/* Members List */}
+				<motion.div
+					initial={{ opacity: 0, y: 20 }}
+					animate={{ opacity: 1, y: 0 }}
+					transition={{ delay: 0.1 }}
+					className="mb-8 p-6 rounded-xl bg-gray-800/50 border border-gray-700"
+				>
+					<h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+						<UsersIcon className="w-5 h-5" />
+						Members ({group.members.length})
+					</h2>
+					<div className="space-y-3">
+						{group.members.map((member, index) => {
+							const memberUser =
+								typeof member.userId === "object"
+									? member.userId
+									: { _id: member.userId, name: "Unknown", email: "" };
+
+							return (
+								<div
+									key={`${memberUser._id}-${index}`}
+									className="flex items-center justify-between p-3 rounded-lg bg-gray-900/50 border border-gray-700/50"
+								>
+									<div className="flex items-center gap-3">
+										<div className="w-10 h-10 rounded-full bg-primary-500/20 flex items-center justify-center text-primary-400 font-semibold">
+											{memberUser.name?.charAt(0).toUpperCase() || "?"}
+										</div>
+										<div>
+											<p className="text-white font-medium">
+												{memberUser.name || "Unknown User"}
+											</p>
+											<p className="text-gray-400 text-sm">
+												{memberUser.email || "No email"}
+											</p>
+										</div>
+									</div>
+									<div className="text-right">
+										<p className="text-gray-500 text-xs">Seat {member.seatPosition + 1}</p>
+										<p className="text-gray-500 text-xs">
+											{new Date(member.joinedAt).toLocaleDateString()}
+										</p>
+									</div>
+								</div>
+							);
+						})}
+					</div>
+				</motion.div>
+
 				{/* Expenses List */}
 				<div className="mb-20">
 					<div className="flex items-center justify-between mb-4">
@@ -345,13 +393,21 @@ export default function GroupDetailPage() {
 													</FormLabel>
 													<FormControl>
 														<Input
-															{...field}
 															type="number"
 															step="0.01"
 															placeholder="0.00"
-															onChange={(e) =>
-																field.onChange(parseFloat(e.target.value))
+															value={
+																field.value === undefined ||
+																Number.isNaN(field.value)
+																	? ""
+																	: field.value
 															}
+															onChange={(e) => {
+																const value = e.target.value;
+																field.onChange(
+																	value === "" ? undefined : parseFloat(value),
+																);
+															}}
 															className="bg-gray-800 border-gray-700 text-white"
 														/>
 													</FormControl>
