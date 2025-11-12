@@ -28,8 +28,7 @@ export interface Group {
 
 // Expense Types
 export interface ExpenseSplit {
-	userId: string;
-	user?: User;
+	userId: string | User;  // Can be ObjectId string or populated User object
 	amount: number;
 	percentage: number;
 }
@@ -39,8 +38,7 @@ export interface Expense {
 	groupId: string;
 	description: string;
 	amount: number;
-	paidBy: string;
-	paidByUser?: User;
+	paidBy: string | User;  // Can be ObjectId string or populated User object
 	splits: ExpenseSplit[];
 	category?: string;
 	date: Date;

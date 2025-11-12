@@ -47,6 +47,8 @@ import { formatCurrency } from "@/lib/utils";
 const expenseSchema = z.object({
 	description: z.string().min(1, "Description is required"),
 	amount: z.number().positive("Amount must be positive"),
+	category: z.string().optional(),
+	selectedMembers: z.array(z.string()).min(1, "Select at least one person"),
 });
 
 type ExpenseFormValues = z.infer<typeof expenseSchema>;
@@ -60,6 +62,7 @@ export default function GroupDetailPage() {
 	const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
 	const [inviteLink, setInviteLink] = useState("");
 	const [copied, setCopied] = useState(false);
+	const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
 
 	const groupId = params.id as string;
 
@@ -78,19 +81,9 @@ export default function GroupDetailPage() {
 		}
 	}, [user, isHydrated, router]);
 
-	const form = useForm<ExpenseFormValues>({
-		resolver: zodResolver(expenseSchema),
-		defaultValues: {
-			description: "",
-			amount: 0,
-		},
-	});
-
-	const onAddExpense = async (values: ExpenseFormValues) => {
-		if (!user || !group) return;
-
-		try {
-			// Get unique member IDs  and filter out any invalid values
+	// Initialize selected members when group loads
+	useEffect(() => {
+		if (group && selectedMembers.length === 0) {
 			const memberIds = [
 				...new Set(
 					group.members.map((m) =>
@@ -98,16 +91,43 @@ export default function GroupDetailPage() {
 					),
 				),
 			].filter((id): id is string => typeof id === "string");
+			setSelectedMembers(memberIds);
+		}
+	}, [group]);
 
+	const form = useForm<ExpenseFormValues>({
+		resolver: zodResolver(expenseSchema),
+		defaultValues: {
+			description: "",
+			amount: 0,
+			category: "",
+			selectedMembers: [],
+		},
+	});
+
+	const onAddExpense = async (values: ExpenseFormValues) => {
+		if (!user || !group) return;
+
+		try {
 			await createExpenseMutation.mutateAsync({
 				description: values.description,
 				amount: values.amount,
 				paidBy: user._id,
-				selectedMembers: memberIds,
+				selectedMembers: selectedMembers,
+				category: values.category,
 			});
 
 			setIsExpenseDialogOpen(false);
 			form.reset();
+			// Reset selected members to all members
+			const memberIds = [
+				...new Set(
+					group.members.map((m) =>
+						typeof m.userId === "object" && m.userId ? m.userId._id : m.userId,
+					),
+				),
+			].filter((id): id is string => typeof id === "string");
+			setSelectedMembers(memberIds);
 		} catch (error) {
 			form.setError("root", {
 				message:
@@ -438,6 +458,74 @@ export default function GroupDetailPage() {
 												</FormItem>
 											)}
 										/>
+										<FormField
+											control={form.control}
+											name="category"
+											render={({ field }) => (
+												<FormItem>
+													<FormLabel className="text-gray-300">
+														Category (Optional)
+													</FormLabel>
+													<FormControl>
+														<Input
+															{...field}
+															placeholder="Food, Transport, etc."
+															className="bg-gray-800 border-gray-700 text-white"
+														/>
+													</FormControl>
+													<FormMessage />
+												</FormItem>
+											)}
+										/>
+										<div className="space-y-2">
+											<FormLabel className="text-gray-300">
+												Split with
+											</FormLabel>
+											<div className="space-y-2 max-h-40 overflow-y-auto">
+												{group?.members.map((member) => {
+													const memberUser =
+														typeof member.userId === "object" && member.userId
+															? member.userId
+															: null;
+													const userId =
+														typeof member.userId === "object" && member.userId
+															? member.userId._id
+															: member.userId;
+													const userName = memberUser?.name || "Unknown User";
+
+													return (
+														<label
+															key={userId}
+															className="flex items-center gap-2 p-2 rounded hover:bg-gray-800 cursor-pointer"
+														>
+															<input
+																type="checkbox"
+																checked={selectedMembers.includes(userId)}
+																onChange={(e) => {
+																	if (e.target.checked) {
+																		setSelectedMembers([
+																			...selectedMembers,
+																			userId,
+																		]);
+																	} else {
+																		setSelectedMembers(
+																			selectedMembers.filter(
+																				(id) => id !== userId,
+																			),
+																		);
+																	}
+																}}
+																className="w-4 h-4"
+															/>
+															<span className="text-white text-sm">
+																{userName}
+																{userId === user?._id && " (You)"}
+															</span>
+														</label>
+													);
+												})}
+											</div>
+										</div>
 										{form.formState.errors.root && (
 											<p className="text-red-500 text-sm">
 												{form.formState.errors.root.message}
@@ -473,45 +561,67 @@ export default function GroupDetailPage() {
 						</div>
 					) : (
 						<div className="space-y-3">
-							{expenses.map((expense, index) => (
-								<motion.div
-									key={expense._id}
-									initial={{ opacity: 0, y: 20 }}
-									animate={{ opacity: 1, y: 0 }}
-									transition={{ delay: index * 0.05 }}
-									className="bg-gray-900/50 border border-gray-800 rounded-xl p-4 hover:border-gray-700 transition-colors"
-								>
-									<div className="flex items-start justify-between">
-										<div className="flex-1">
-											<h3 className="text-white font-medium mb-1">
-												{expense.description}
-											</h3>
-											<p className="text-gray-400 text-sm">
-												Paid by {expense.paidByUser?.name || "Unknown"}
-											</p>
-											<p className="text-gray-500 text-xs mt-1">
-												{new Date(expense.createdAt).toLocaleDateString(
-													"en-IN",
-													{
+							{expenses.map((expense, index) => {
+								const paidByUser =
+									typeof expense.paidBy === "object" && expense.paidBy
+										? expense.paidBy
+										: null;
+								const paidByName = paidByUser?.name || "Unknown";
+
+								return (
+									<motion.div
+										key={expense._id}
+										initial={{ opacity: 0, y: 20 }}
+										animate={{ opacity: 1, y: 0 }}
+										transition={{ delay: index * 0.05 }}
+										className="bg-gray-900/50 border border-gray-800 rounded-xl p-4 hover:border-gray-700 transition-colors"
+									>
+										<div className="flex items-start justify-between mb-3">
+											<div className="flex-1">
+												<div className="flex items-center gap-2 mb-1">
+													<h3 className="text-white font-medium">
+														{expense.description}
+													</h3>
+													{expense.category && (
+														<span className="px-2 py-0.5 bg-primary-500/20 text-primary-400 text-xs rounded">
+															{expense.category}
+														</span>
+													)}
+												</div>
+												<p className="text-gray-400 text-sm">
+													Paid by {paidByName}
+													{paidByUser?._id === user?._id && " (You)"}
+												</p>
+												<p className="text-gray-500 text-xs mt-1">
+													{new Date(expense.createdAt).toLocaleString("en-IN", {
 														day: "numeric",
 														month: "short",
 														year: "numeric",
-													},
-												)}
-											</p>
+														hour: "2-digit",
+														minute: "2-digit",
+													})}
+												</p>
+											</div>
+											<div className="text-right">
+												<p className="text-xl font-bold text-white">
+													₹{expense.amount.toFixed(2)}
+												</p>
+												<p className="text-gray-400 text-sm">
+													₹{(expense.amount / expense.splits.length).toFixed(2)}{" "}
+													each
+												</p>
+											</div>
 										</div>
-										<div className="text-right">
-											<p className="text-xl font-bold text-white">
-												₹{expense.amount.toFixed(2)}
-											</p>
-											<p className="text-gray-400 text-sm">
-												₹{(expense.amount / expense.splits.length).toFixed(2)}{" "}
-												per person
-											</p>
+										<div className="flex items-center gap-2 text-xs text-gray-500">
+											<UsersIcon className="w-3 h-3" />
+											<span>
+												Split between {expense.splits.length}{" "}
+												{expense.splits.length === 1 ? "person" : "people"}
+											</span>
 										</div>
-									</div>
-								</motion.div>
-							))}
+									</motion.div>
+								);
+							})}
 						</div>
 					)}
 				</div>
