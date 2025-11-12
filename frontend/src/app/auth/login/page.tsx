@@ -45,9 +45,12 @@ export default function LoginPage() {
 			await loginMutation.mutateAsync({ email: values.email });
 			setEmailForMagicLink(values.email);
 			setMagicLinkSent(true);
-		} catch (error: any) {
+		} catch (error) {
 			form.setError("root", {
-				message: error.response?.data?.error || "Failed to send magic link",
+				message:
+					error instanceof Error
+						? error.message
+						: "Failed to send magic link",
 			});
 		}
 	};
@@ -63,9 +66,9 @@ export default function LoginPage() {
 				email: values.email,
 				password: values.password,
 			});
-		} catch (error: any) {
+		} catch (error) {
 			form.setError("root", {
-				message: error.response?.data?.error || "Login failed",
+				message: error instanceof Error ? error.message : "Login failed",
 			});
 		}
 	};

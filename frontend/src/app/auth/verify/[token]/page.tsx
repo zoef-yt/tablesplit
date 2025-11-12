@@ -63,8 +63,9 @@ export default function VerifyMagicLinkPage() {
 							Verification Failed
 						</h2>
 						<p className="text-gray-400 mb-6">
-							{(error as any)?.response?.data?.error ||
-								"Invalid or expired magic link"}
+							{error instanceof Error
+								? error.message
+								: "Invalid or expired magic link"}
 						</p>
 						<Link href="/auth/login">
 							<Button>Back to Login</Button>

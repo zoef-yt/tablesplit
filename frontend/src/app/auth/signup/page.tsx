@@ -63,7 +63,7 @@ export default function SignupPage() {
 			return response.data!;
 		},
 		onSuccess: (data) => {
-			setAuth(data.user as any, data.token);
+			setAuth(data.user, data.token);
 
 			// Check if there's a pending invite to redirect to
 			const pendingInvite = sessionStorage.getItem("pendingInvite");
@@ -74,10 +74,9 @@ export default function SignupPage() {
 				router.push("/groups");
 			}
 		},
-		onError: (error: any) => {
+		onError: (error: Error) => {
 			form.setError("root", {
-				message:
-					error.response?.data?.error || "Sign up failed. Please try again.",
+				message: error.message || "Sign up failed. Please try again.",
 			});
 		},
 	});

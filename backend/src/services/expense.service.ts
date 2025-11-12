@@ -1,5 +1,5 @@
 import { Expense, IExpense } from '../models/Expense';
-import { Balance } from '../models/Balance';
+import { Balance, IBalance } from '../models/Balance';
 import { Group } from '../models/Group';
 import { NotFoundError, ForbiddenError } from '../middleware/errorHandler';
 import { logger } from '../utils/logger';
@@ -23,7 +23,7 @@ export class ExpenseService {
     paidBy: string,
     selectedMembers: string[],
     category?: string
-  ): Promise<{ expense: IExpense; updatedBalances: any[] }> {
+  ): Promise<{ expense: IExpense; updatedBalances: IBalance[] }> {
     const group = await Group.findById(groupId);
 
     if (!group) {
@@ -52,6 +52,10 @@ export class ExpenseService {
 
     // Update balances atomically
     const updatedBalances = await this.updateBalances(groupId, paidBy, splits);
+
+    // Populate expense with user information before returning
+    await expense.populate('paidBy', 'name email avatar');
+    await expense.populate('splits.userId', 'name email avatar');
 
     logger.info(`Expense created: ${expense._id} in group ${groupId}`);
 
@@ -129,7 +133,7 @@ export class ExpenseService {
     fromUserId: string,
     toUserId: string,
     amount: number
-  ): Promise<any[]> {
+  ): Promise<IBalance[]> {
     const group = await Group.findById(groupId);
 
     if (!group) {
@@ -200,7 +204,7 @@ export class ExpenseService {
     groupId: string,
     paidBy: string,
     splits: Array<{ userId: string; amount: number }>
-  ) {
+  ): Promise<IBalance[]> {
     const session = await mongoose.startSession();
     session.startTransaction();
 

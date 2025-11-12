@@ -87,20 +87,35 @@ export default function GroupDetailPage() {
 	});
 
 	const onAddExpense = async (values: ExpenseFormValues) => {
-		if (!user) return;
+		if (!user || !group) return;
 
-		await createExpenseMutation.mutateAsync({
-			description: values.description,
-			amount: values.amount,
-			paidBy: user._id,
-			selectedMembers:
-				group?.members.map((m) =>
-					typeof m.userId === "object" ? m.userId._id : m.userId,
-				) || [],
-		});
+		try {
+			// Get unique member IDs  and filter out any invalid values
+			const memberIds = [
+				...new Set(
+					group.members.map((m) =>
+						typeof m.userId === "object" && m.userId ? m.userId._id : m.userId,
+					),
+				),
+			].filter((id): id is string => typeof id === "string");
 
-		setIsExpenseDialogOpen(false);
-		form.reset();
+			await createExpenseMutation.mutateAsync({
+				description: values.description,
+				amount: values.amount,
+				paidBy: user._id,
+				selectedMembers: memberIds,
+			});
+
+			setIsExpenseDialogOpen(false);
+			form.reset();
+		} catch (error) {
+			form.setError("root", {
+				message:
+					error instanceof Error
+						? error.message
+						: "Failed to create expense. Please try again.",
+			});
+		}
 	};
 
 	const onGenerateInvite = async () => {
@@ -423,6 +438,11 @@ export default function GroupDetailPage() {
 												</FormItem>
 											)}
 										/>
+										{form.formState.errors.root && (
+											<p className="text-red-500 text-sm">
+												{form.formState.errors.root.message}
+											</p>
+										)}
 										<Button
 											type="submit"
 											className="w-full bg-primary-600 hover:bg-primary-700"

@@ -29,14 +29,21 @@ export default function CreateGroupPage() {
 
 			const group = response.data;
 			router.push(`/groups/${group!._id}`);
-		} catch (err: any) {
-			setError(err.response?.data?.error || "Failed to create group");
+		} catch (err) {
+			setError(
+				err instanceof Error ? err.message : "Failed to create group",
+			);
 		} finally {
 			setLoading(false);
 		}
 	};
 
-	const themes = [
+	const themes: Array<{
+		value: "poker" | "classic" | "minimal";
+		name: string;
+		icon: string;
+		description: string;
+	}> = [
 		{
 			value: "poker",
 			name: "Poker Table",
@@ -105,7 +112,7 @@ export default function CreateGroupPage() {
 									<button
 										key={themeOption.value}
 										type="button"
-										onClick={() => setTheme(themeOption.value as any)}
+										onClick={() => setTheme(themeOption.value)}
 										className={`p-4 rounded-lg border-2 transition-all ${
 											theme === themeOption.value
 												? "border-gold-500 bg-gold-500/20"

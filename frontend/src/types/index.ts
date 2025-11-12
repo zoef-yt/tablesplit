@@ -95,7 +95,7 @@ export interface ThemeConfig {
 }
 
 // API Response Types
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
 	success: boolean;
 	data?: T;
 	error?: string;
@@ -146,7 +146,7 @@ export interface PendingAction {
 	id: string;
 	type: "expense" | "payment" | "group";
 	action: "create" | "update" | "delete";
-	data: any;
+	data: Record<string, unknown>;
 	timestamp: number;
 	retries: number;
 }

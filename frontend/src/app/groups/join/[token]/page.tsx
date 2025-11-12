@@ -76,8 +76,9 @@ export default function JoinGroupPage() {
 						Unable to Join Group
 					</h2>
 					<p className="text-gray-400 mb-6">
-						{(joinGroupMutation.error as any)?.response?.data?.error ||
-							"The invite link may be invalid or expired."}
+						{joinGroupMutation.error instanceof Error
+							? joinGroupMutation.error.message
+							: "The invite link may be invalid or expired."}
 					</p>
 					<Link href="/groups">
 						<Button className="bg-primary-600 hover:bg-primary-700">
