@@ -25,7 +25,15 @@ export function useLogin() {
         return;
       }
       setAuth(data.user, data.token);
-      router.push('/groups');
+
+      // Check if there's a pending invite to redirect to
+      const pendingInvite = sessionStorage.getItem('pendingInvite');
+      if (pendingInvite) {
+        sessionStorage.removeItem('pendingInvite');
+        router.push(`/groups/join/${pendingInvite}`);
+      } else {
+        router.push('/groups');
+      }
     },
   });
 }
