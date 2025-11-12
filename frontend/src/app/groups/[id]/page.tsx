@@ -1,7 +1,7 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Plus, Receipt, Loader2, Users as UsersIcon, IndianRupee, UserPlus, Copy, Check } from 'lucide-react';
 import { useAuthStore } from '@/lib/store/auth';
@@ -41,6 +41,7 @@ export default function GroupDetailPage() {
   const params = useParams();
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
+  const isHydrated = useAuthStore((state) => state.isHydrated);
   const [isExpenseDialogOpen, setIsExpenseDialogOpen] = useState(false);
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
   const [inviteLink, setInviteLink] = useState('');
@@ -55,6 +56,13 @@ export default function GroupDetailPage() {
   const inviteMutation = useInviteToGroup(groupId);
 
   useRealtimeUpdates(groupId);
+
+  // Handle redirect to login if not authenticated
+  useEffect(() => {
+    if (isHydrated && !user) {
+      router.push('/auth/login');
+    }
+  }, [user, isHydrated, router]);
 
   const form = useForm<ExpenseFormValues>({
     resolver: zodResolver(expenseSchema),
@@ -94,9 +102,13 @@ export default function GroupDetailPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  if (!user) {
-    router.push('/auth/login');
-    return null;
+  // Show loading while hydrating
+  if (!isHydrated || !user) {
+    return (
+      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+        <Loader2 className="w-12 h-12 text-primary-500 animate-spin" />
+      </div>
+    );
   }
 
   if (groupLoading) {

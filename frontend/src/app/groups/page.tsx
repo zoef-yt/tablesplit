@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Plus, Users, ArrowRight, Loader2, LogOut } from 'lucide-react';
@@ -37,6 +37,7 @@ export default function GroupsPage() {
   const router = useRouter();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const user = useAuthStore((state) => state.user);
+  const isHydrated = useAuthStore((state) => state.isHydrated);
   const logout = useAuthStore((state) => state.logout);
   const { data: groups = [], isLoading } = useGroups();
   const createGroupMutation = useCreateGroup();
@@ -48,6 +49,13 @@ export default function GroupsPage() {
     },
   });
 
+  // Handle redirect to login if not authenticated
+  useEffect(() => {
+    if (isHydrated && !user) {
+      router.push('/auth/login');
+    }
+  }, [user, isHydrated, router]);
+
   const onCreateGroup = async (values: CreateGroupFormValues) => {
     await createGroupMutation.mutateAsync({
       name: values.name,
@@ -58,9 +66,13 @@ export default function GroupsPage() {
     form.reset();
   };
 
-  if (!user) {
-    router.push('/auth/login');
-    return null;
+  // Show loading while hydrating
+  if (!isHydrated || !user) {
+    return (
+      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+        <Loader2 className="w-12 h-12 text-primary-500 animate-spin" />
+      </div>
+    );
   }
 
   if (isLoading) {
