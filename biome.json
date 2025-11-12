@@ -1,5 +1,6 @@
 {
-  "$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
+  "root": false,
+  "$schema": "https://biomejs.dev/schemas/2.3.5/schema.json",
   "vcs": {
     "enabled": true,
     "clientKind": "git",
@@ -8,12 +9,13 @@
   "files": {
     "ignoreUnknown": false,
     "ignore": [
-      "node_modules",
-      ".next",
-      "dist",
-      "build",
-      "*.config.js",
-      "*.config.ts"
+      "**/node_modules",
+      "**/.next",
+      "**/dist",
+      "**/build",
+      "**/*.config.js",
+      "**/*.config.ts",
+      "**/*.css"
     ]
   },
   "formatter": {
@@ -24,9 +26,7 @@
     "lineEnding": "lf",
     "lineWidth": 100
   },
-  "organizeImports": {
-    "enabled": true
-  },
+  "assist": { "actions": { "source": { "organizeImports": "on" } } },
   "linter": {
     "enabled": true,
     "rules": {
@@ -55,6 +55,12 @@
       "bracketSameLine": false,
       "quoteStyle": "single",
       "attributePosition": "auto"
+    }
+  },
+  "css": {
+    "parser": {
+      "cssModules": false,
+      "tailwindDirectives": true
     }
   }
 }
