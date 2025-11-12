@@ -46,7 +46,8 @@ import {
 } from "@/components/ui/form";
 import { formatCurrency } from "@/lib/utils";
 import { SettlementPanel } from "@/components/SettlementPanel";
-import type { User } from "@/types";
+import { ExpenseDetailModal } from "@/components/ExpenseDetailModal";
+import type { User, Expense } from "@/types";
 
 const expenseSchema = z.object({
 	description: z.string().min(1, "Description is required"),
@@ -66,6 +67,8 @@ export default function GroupDetailPage() {
 	const [inviteLink, setInviteLink] = useState("");
 	const [copied, setCopied] = useState(false);
 	const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
+	const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
+	const [isExpenseDetailOpen, setIsExpenseDetailOpen] = useState(false);
 
 	const groupId = params.id as string;
 
@@ -222,6 +225,11 @@ export default function GroupDetailPage() {
 				error instanceof Error ? error.message : "Failed to record settlement",
 			);
 		}
+	};
+
+	const handleExpenseClick = (expense: Expense) => {
+		setSelectedExpense(expense);
+		setIsExpenseDetailOpen(true);
 	};
 
 	return (
@@ -636,7 +644,8 @@ export default function GroupDetailPage() {
 										initial={{ opacity: 0, y: 20 }}
 										animate={{ opacity: 1, y: 0 }}
 										transition={{ delay: index * 0.05 }}
-										className="bg-gray-900/50 border border-gray-800 rounded-xl p-4 hover:border-gray-700 transition-colors"
+										onClick={() => handleExpenseClick(expense)}
+										className="bg-gray-900/50 border border-gray-800 rounded-xl p-4 hover:border-gray-700 hover:bg-gray-900/70 transition-all cursor-pointer"
 									>
 										<div className="flex items-start justify-between mb-3">
 											<div className="flex-1">
@@ -687,6 +696,17 @@ export default function GroupDetailPage() {
 						</div>
 					)}
 				</div>
+
+				{/* Expense Detail Modal */}
+				<ExpenseDetailModal
+					expense={selectedExpense}
+					isOpen={isExpenseDetailOpen}
+					onClose={() => {
+						setIsExpenseDetailOpen(false);
+						setSelectedExpense(null);
+					}}
+					currentUserId={user._id}
+				/>
 			</div>
 		</div>
 	);
