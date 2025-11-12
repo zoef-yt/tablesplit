@@ -71,20 +71,41 @@ export default function JoinGroupPage() {
 					animate={{ opacity: 1, scale: 1 }}
 					className="text-center max-w-md"
 				>
-					<XCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-					<h2 className="text-2xl font-bold text-white mb-2">
-						Unable to Join Group
-					</h2>
-					<p className="text-gray-400 mb-6">
-						{joinGroupMutation.error instanceof Error
-							? joinGroupMutation.error.message
-							: "The invite link may be invalid or expired."}
-					</p>
-					<Link href="/groups">
-						<Button className="bg-primary-600 hover:bg-primary-700">
-							Go to My Groups
-						</Button>
-					</Link>
+					{joinGroupMutation.error instanceof Error &&
+					joinGroupMutation.error.message.includes("already a member") ? (
+						<>
+							<CheckCircle className="w-16 h-16 text-primary-500 mx-auto mb-4" />
+							<h2 className="text-2xl font-bold text-white mb-2">
+								You&apos;re Already In!
+							</h2>
+							<p className="text-gray-400 mb-6">
+								You&apos;re already a member of this group. Head to your groups
+								to see it.
+							</p>
+							<Link href="/groups">
+								<Button className="bg-primary-600 hover:bg-primary-700">
+									View My Groups
+								</Button>
+							</Link>
+						</>
+					) : (
+						<>
+							<XCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+							<h2 className="text-2xl font-bold text-white mb-2">
+								Unable to Join Group
+							</h2>
+							<p className="text-gray-400 mb-6">
+								{joinGroupMutation.error instanceof Error
+									? joinGroupMutation.error.message
+									: "The invite link may be invalid or expired."}
+							</p>
+							<Link href="/groups">
+								<Button className="bg-primary-600 hover:bg-primary-700">
+									Go to My Groups
+								</Button>
+							</Link>
+						</>
+					)}
 				</motion.div>
 			</div>
 		);

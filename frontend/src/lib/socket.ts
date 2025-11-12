@@ -1,4 +1,5 @@
 import { io, Socket } from "socket.io-client";
+import { useAuthStore } from "@/stores/authStore";
 
 const SOCKET_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
@@ -10,9 +11,19 @@ export const getSocket = (): Socket => {
 			autoConnect: false,
 			withCredentials: true,
 			auth: (cb) => {
-				const token = localStorage.getItem("token");
+				const token = useAuthStore.getState().token;
 				cb({ token });
 			},
+		});
+
+		// Reconnect logic with updated token
+		socket.on("connect_error", (error) => {
+			console.error("Socket connection error:", error.message);
+			// Try to reconnect with fresh token
+			const token = useAuthStore.getState().token;
+			if (token) {
+				socket!.auth = { token };
+			}
 		});
 	}
 	return socket;
@@ -20,7 +31,11 @@ export const getSocket = (): Socket => {
 
 export const connectSocket = (): Socket => {
 	const socket = getSocket();
-	if (!socket.connected) {
+	const token = useAuthStore.getState().token;
+
+	// Only connect if we have a valid token
+	if (token && !socket.connected) {
+		socket.auth = { token };  // Update token before connecting
 		socket.connect();
 	}
 	return socket;
@@ -34,10 +49,14 @@ export const disconnectSocket = (): void => {
 
 export const joinGroup = (groupId: string): void => {
 	const socket = getSocket();
-	socket.emit("group:join", groupId);
+	if (socket.connected) {
+		socket.emit("group:join", groupId);
+	}
 };
 
 export const leaveGroup = (groupId: string): void => {
 	const socket = getSocket();
-	socket.emit("group:leave", groupId);
+	if (socket.connected) {
+		socket.emit("group:leave", groupId);
+	}
 };
