@@ -16,15 +16,41 @@ export class EmailService {
   private templates: Map<string, HandlebarsTemplateDelegate> = new Map();
 
   constructor() {
+    const port = parseInt(process.env.SMTP_PORT || '465', 10);
+    const host = process.env.SMTP_HOST || 'smtpout.secureserver.net';
+
     this.transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: parseInt(process.env.SMTP_PORT || '587'),
-      secure: process.env.SMTP_PORT === '465',
+      host,
+      port,
+      secure: port === 465, // true for 465 (SSL), false for 587 (STARTTLS)
       auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS,
       },
+      // network/timeouts
+      connectionTimeout: 10_000, // 10s
+      greetingTimeout: 10_000,
+      socketTimeout: 10_000,
+      tls: {
+        // only set to false temporarily for debugging TLS cert issues
+        rejectUnauthorized: process.env.SMTP_TLS_REJECT_UNAUTHORIZED !== 'false',
+      },
     });
+
+    // Verify connection immediately and log clearly
+    this.transporter.verify()
+      .then(() => {
+        logger.info(`✅ SMTP: connected to ${host}:${port} (secure=${port === 465})`);
+      })
+      .catch((err) => {
+        // helpful, actionable log
+        logger.error(`❌ SMTP verify failed: host=${host} port=${port} user=${process.env.SMTP_USER}`);
+        logger.error(err);
+        logger.warn('⚠️  Email functionality will not work. Check your SMTP configuration.');
+        // don't throw here: you might want the app to start even if email is down.
+        // If you do want to crash, uncomment:
+        // throw err;
+      });
 
     // Compile templates
     this.compileTemplates();
