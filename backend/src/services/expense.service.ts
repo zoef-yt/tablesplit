@@ -147,37 +147,25 @@ export class ExpenseService {
     }
 
     // Update balances
-    const session = await mongoose.startSession();
-    session.startTransaction();
+    // Decrease balance for payer (from)
+    await Balance.findOneAndUpdate(
+      { groupId, userId: fromUserId },
+      { $inc: { balance: amount }, lastUpdated: new Date() },
+      { upsert: true }
+    );
 
-    try {
-      // Decrease balance for payer (from)
-      await Balance.findOneAndUpdate(
-        { groupId, userId: fromUserId },
-        { $inc: { balance: amount }, lastUpdated: new Date() },
-        { upsert: true, session }
-      );
+    // Increase balance for payee (to)
+    await Balance.findOneAndUpdate(
+      { groupId, userId: toUserId },
+      { $inc: { balance: -amount }, lastUpdated: new Date() },
+      { upsert: true }
+    );
 
-      // Increase balance for payee (to)
-      await Balance.findOneAndUpdate(
-        { groupId, userId: toUserId },
-        { $inc: { balance: -amount }, lastUpdated: new Date() },
-        { upsert: true, session }
-      );
+    logger.info(`Settlement recorded: ${fromUserId} paid ${toUserId} ${amount} in group ${groupId}`);
 
-      await session.commitTransaction();
-
-      logger.info(`Settlement recorded: ${fromUserId} paid ${toUserId} ${amount} in group ${groupId}`);
-
-      // Return updated balances
-      const updatedBalances = await this.getGroupBalances(userId, groupId);
-      return updatedBalances;
-    } catch (error) {
-      await session.abortTransaction();
-      throw error;
-    } finally {
-      session.endSession();
-    }
+    // Return updated balances
+    const updatedBalances = await this.getGroupBalances(userId, groupId);
+    return updatedBalances;
   }
 
   /**
@@ -205,45 +193,33 @@ export class ExpenseService {
     paidBy: string,
     splits: Array<{ userId: string; amount: number }>
   ): Promise<IBalance[]> {
-    const session = await mongoose.startSession();
-    session.startTransaction();
+    const updates = [];
 
-    try {
-      const updates = [];
-
-      for (const split of splits) {
-        if (split.userId === paidBy) {
-          // Payer's balance increases by (total - their share)
-          const netChange = splits.reduce((sum, s) => sum + s.amount, 0) - split.amount;
-          updates.push(
-            Balance.findOneAndUpdate(
-              { groupId, userId: split.userId },
-              { $inc: { balance: netChange }, lastUpdated: new Date() },
-              { upsert: true, new: true, session }
-            )
-          );
-        } else {
-          // Others' balance decreases by their share
-          updates.push(
-            Balance.findOneAndUpdate(
-              { groupId, userId: split.userId },
-              { $inc: { balance: -split.amount }, lastUpdated: new Date() },
-              { upsert: true, new: true, session }
-            )
-          );
-        }
+    for (const split of splits) {
+      if (split.userId === paidBy) {
+        // Payer's balance increases by (total - their share)
+        const netChange = splits.reduce((sum, s) => sum + s.amount, 0) - split.amount;
+        updates.push(
+          Balance.findOneAndUpdate(
+            { groupId, userId: split.userId },
+            { $inc: { balance: netChange }, lastUpdated: new Date() },
+            { upsert: true, new: true }
+          )
+        );
+      } else {
+        // Others' balance decreases by their share
+        updates.push(
+          Balance.findOneAndUpdate(
+            { groupId, userId: split.userId },
+            { $inc: { balance: -split.amount }, lastUpdated: new Date() },
+            { upsert: true, new: true }
+          )
+        );
       }
-
-      const results = await Promise.all(updates);
-
-      await session.commitTransaction();
-      return results;
-    } catch (error) {
-      await session.abortTransaction();
-      throw error;
-    } finally {
-      session.endSession();
     }
+
+    const results = await Promise.all(updates);
+    return results;
   }
 
   /**
