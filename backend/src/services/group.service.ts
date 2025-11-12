@@ -1,4 +1,6 @@
 import { Group, IGroup } from '../models/Group';
+import { Expense } from '../models/Expense';
+import { Balance } from '../models/Balance';
 import { NotFoundError, ForbiddenError, BadRequestError } from '../middleware/errorHandler';
 import { logger } from '../utils/logger';
 import { v4 as uuidv4 } from 'uuid';
@@ -188,6 +190,69 @@ export class GroupService {
       await group.save();
       logger.info(`User ${userId} left group ${groupId}`);
     }
+  }
+
+  /**
+   * Remove member from group (creator only)
+   */
+  async removeMember(userId: string, groupId: string, memberId: string): Promise<IGroup> {
+    const group = await Group.findById(groupId).populate('members.userId', 'name email avatar');
+
+    if (!group) {
+      throw new NotFoundError('Group not found');
+    }
+
+    // Check if user is the creator (first member)
+    if (group.members.length === 0 || group.members[0].userId._id.toString() !== userId) {
+      throw new ForbiddenError('Only the group creator can remove members');
+    }
+
+    // Cannot remove the creator
+    if (memberId === userId) {
+      throw new BadRequestError('Cannot remove yourself as the creator. Delete the group instead.');
+    }
+
+    // Check if member exists in group
+    const memberExists = group.members.some((m) => m.userId._id.toString() === memberId);
+    if (!memberExists) {
+      throw new NotFoundError('Member not found in this group');
+    }
+
+    // Remove the member
+    group.members = group.members.filter((m) => m.userId._id.toString() !== memberId);
+    await group.save();
+
+    logger.info(`Member ${memberId} removed from group ${groupId} by creator ${userId}`);
+
+    // Return populated group
+    return await Group.findById(groupId).populate('members.userId', 'name email avatar') as IGroup;
+  }
+
+  /**
+   * Delete entire group (creator only)
+   */
+  async deleteGroup(userId: string, groupId: string): Promise<void> {
+    const group = await Group.findById(groupId);
+
+    if (!group) {
+      throw new NotFoundError('Group not found');
+    }
+
+    // Check if user is the creator (first member)
+    if (group.members.length === 0 || group.members[0].userId.toString() !== userId) {
+      throw new ForbiddenError('Only the group creator can delete the group');
+    }
+
+    // Delete all associated expenses
+    await Expense.deleteMany({ groupId });
+
+    // Delete all associated balances
+    await Balance.deleteMany({ groupId });
+
+    // Delete the group
+    await Group.findByIdAndDelete(groupId);
+
+    logger.info(`Group ${groupId} deleted by creator ${userId}`);
   }
 }
 

@@ -151,4 +151,42 @@ router.delete('/:id/leave', async (req: AuthRequest, res: Response, next) => {
   }
 });
 
+/**
+ * DELETE /api/groups/:id/members/:memberId
+ * Remove member from group (creator only)
+ */
+router.delete('/:id/members/:memberId', async (req: AuthRequest, res: Response, next) => {
+  try {
+    const { id, memberId } = req.params;
+
+    const group = await groupService.removeMember(req.userId!, id, memberId);
+
+    res.json({
+      success: true,
+      data: group,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * DELETE /api/groups/:id
+ * Delete entire group (creator only)
+ */
+router.delete('/:id', async (req: AuthRequest, res: Response, next) => {
+  try {
+    const { id } = req.params;
+
+    await groupService.deleteGroup(req.userId!, id);
+
+    res.json({
+      success: true,
+      message: 'Group deleted successfully',
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;

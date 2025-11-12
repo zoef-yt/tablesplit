@@ -48,6 +48,7 @@ import { formatCurrency } from "@/lib/utils";
 import { SettlementPanel } from "@/components/SettlementPanel";
 import { ExpenseDetailModal } from "@/components/ExpenseDetailModal";
 import { Navigation } from "@/components/Navigation";
+import { GroupSettings } from "@/components/GroupSettings";
 import type { User, Expense } from "@/types";
 
 const expenseSchema = z.object({
@@ -256,87 +257,90 @@ export default function GroupDetailPage() {
 							<span>{group.members.length} members</span>
 						</div>
 					</div>
-					<Dialog
-						open={isInviteDialogOpen}
-						onOpenChange={setIsInviteDialogOpen}
-					>
-						<DialogTrigger asChild>
-							<button
-								onClick={() => setInviteLink("")}
-								className="p-2 hover:bg-gray-800 rounded-full transition-colors text-primary-500"
-								title="Invite members"
-							>
-								<UserPlus className="w-6 h-6" />
-							</button>
-						</DialogTrigger>
-						<DialogContent className="bg-gray-900 border-gray-800">
-							<DialogHeader>
-								<DialogTitle className="text-white">
-									Invite People to {group.name}
-								</DialogTitle>
-							</DialogHeader>
-							<div className="space-y-4">
-								{!inviteLink ? (
-									<div className="text-center py-8">
-										<p className="text-gray-400 mb-4">
-											Generate an invite link to share with friends
-										</p>
-										<Button
-											onClick={onGenerateInvite}
-											disabled={inviteMutation.isPending}
-											className="bg-primary-600 hover:bg-primary-700"
-										>
-											{inviteMutation.isPending ? (
-												<>
-													<Loader2 className="w-5 h-5 animate-spin mr-2" />
-													Generating...
-												</>
-											) : (
-												<>
-													<UserPlus className="w-5 h-5 mr-2" />
-													Generate Invite Link
-												</>
-											)}
-										</Button>
-									</div>
-								) : (
-									<div className="space-y-4">
-										<p className="text-gray-400 text-sm">
-											Share this link with anyone you want to invite:
-										</p>
-										<div className="flex gap-2">
-											<Input
-												value={inviteLink}
-												readOnly
-												className="bg-gray-800 border-gray-700 text-white flex-1"
-											/>
+					<div className="flex items-center gap-2">
+						<GroupSettings group={group} currentUserId={user._id} />
+						<Dialog
+							open={isInviteDialogOpen}
+							onOpenChange={setIsInviteDialogOpen}
+						>
+							<DialogTrigger asChild>
+								<button
+									onClick={() => setInviteLink("")}
+									className="p-2 hover:bg-gray-800 rounded-full transition-colors text-primary-500"
+									title="Invite members"
+								>
+									<UserPlus className="w-6 h-6" />
+								</button>
+							</DialogTrigger>
+							<DialogContent className="bg-gray-900 border-gray-800">
+								<DialogHeader>
+									<DialogTitle className="text-white">
+										Invite People to {group.name}
+									</DialogTitle>
+								</DialogHeader>
+								<div className="space-y-4">
+									{!inviteLink ? (
+										<div className="text-center py-8">
+											<p className="text-gray-400 mb-4">
+												Generate an invite link to share with friends
+											</p>
 											<Button
-												onClick={onCopyInviteLink}
-												variant="outline"
-												className="border-gray-700"
+												onClick={onGenerateInvite}
+												disabled={inviteMutation.isPending}
+												className="bg-primary-600 hover:bg-primary-700"
 											>
-												{copied ? (
+												{inviteMutation.isPending ? (
 													<>
-														<Check className="w-5 h-5 mr-2" />
-														Copied!
+														<Loader2 className="w-5 h-5 animate-spin mr-2" />
+														Generating...
 													</>
 												) : (
 													<>
-														<Copy className="w-5 h-5 mr-2" />
-														Copy
+														<UserPlus className="w-5 h-5 mr-2" />
+														Generate Invite Link
 													</>
 												)}
 											</Button>
 										</div>
-										<p className="text-gray-500 text-xs">
-											Anyone with this link can join the group. The link
-											doesn&apos;t expire.
-										</p>
-									</div>
-								)}
-							</div>
-						</DialogContent>
-					</Dialog>
+									) : (
+										<div className="space-y-4">
+											<p className="text-gray-400 text-sm">
+												Share this link with anyone you want to invite:
+											</p>
+											<div className="flex gap-2">
+												<Input
+													value={inviteLink}
+													readOnly
+													className="bg-gray-800 border-gray-700 text-white flex-1"
+												/>
+												<Button
+													onClick={onCopyInviteLink}
+													variant="outline"
+													className="border-gray-700"
+												>
+													{copied ? (
+														<>
+															<Check className="w-5 h-5 mr-2" />
+															Copied!
+														</>
+													) : (
+														<>
+															<Copy className="w-5 h-5 mr-2" />
+															Copy
+														</>
+													)}
+												</Button>
+											</div>
+											<p className="text-gray-500 text-xs">
+												Anyone with this link can join the group. The link
+												doesn&apos;t expire.
+											</p>
+										</div>
+									)}
+								</div>
+							</DialogContent>
+						</Dialog>
+					</div>
 				</div>
 
 				{/* My Balance */}

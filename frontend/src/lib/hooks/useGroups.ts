@@ -110,3 +110,35 @@ export function useLeaveGroup() {
 		},
 	});
 }
+
+export function useRemoveMember(groupId: string) {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: async (memberId: string) => {
+			const response = await apiHelpers.delete<Group>(
+				`/groups/${groupId}/members/${memberId}`,
+			);
+			return response.data!;
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ["groups", groupId] });
+			queryClient.invalidateQueries({ queryKey: ["groups"] });
+		},
+	});
+}
+
+export function useDeleteGroup() {
+	const router = useRouter();
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: async (groupId: string) => {
+			await apiHelpers.delete(`/groups/${groupId}`);
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ["groups"] });
+			router.push("/groups");
+		},
+	});
+}
