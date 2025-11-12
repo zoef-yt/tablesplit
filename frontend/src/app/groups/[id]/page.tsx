@@ -48,7 +48,6 @@ const expenseSchema = z.object({
 	description: z.string().min(1, "Description is required"),
 	amount: z.number().positive("Amount must be positive"),
 	category: z.string().optional(),
-	selectedMembers: z.array(z.string()).min(1, "Select at least one person"),
 });
 
 type ExpenseFormValues = z.infer<typeof expenseSchema>;
@@ -93,7 +92,7 @@ export default function GroupDetailPage() {
 			].filter((id): id is string => typeof id === "string");
 			setSelectedMembers(memberIds);
 		}
-	}, [group]);
+	}, [group, selectedMembers.length]);
 
 	const form = useForm<ExpenseFormValues>({
 		resolver: zodResolver(expenseSchema),
@@ -101,12 +100,19 @@ export default function GroupDetailPage() {
 			description: "",
 			amount: 0,
 			category: "",
-			selectedMembers: [],
 		},
 	});
 
 	const onAddExpense = async (values: ExpenseFormValues) => {
 		if (!user || !group) return;
+
+		// Validate selected members
+		if (selectedMembers.length === 0) {
+			form.setError("root", {
+				message: "Please select at least one person to split with",
+			});
+			return;
+		}
 
 		try {
 			await createExpenseMutation.mutateAsync({
@@ -479,9 +485,9 @@ export default function GroupDetailPage() {
 										/>
 										<div className="space-y-2">
 											<FormLabel className="text-gray-300">
-												Split with
+												Split with ({selectedMembers.length} selected)
 											</FormLabel>
-											<div className="space-y-2 max-h-40 overflow-y-auto">
+											<div className="space-y-2 max-h-40 overflow-y-auto bg-gray-800/50 rounded p-2">
 												{group?.members.map((member) => {
 													const memberUser =
 														typeof member.userId === "object" && member.userId
@@ -496,7 +502,7 @@ export default function GroupDetailPage() {
 													return (
 														<label
 															key={userId}
-															className="flex items-center gap-2 p-2 rounded hover:bg-gray-800 cursor-pointer"
+															className="flex items-center gap-2 p-2 rounded hover:bg-gray-700 cursor-pointer transition-colors"
 														>
 															<input
 																type="checkbox"
@@ -515,7 +521,7 @@ export default function GroupDetailPage() {
 																		);
 																	}
 																}}
-																className="w-4 h-4"
+																className="w-4 h-4 accent-primary-500"
 															/>
 															<span className="text-white text-sm">
 																{userName}
@@ -525,6 +531,11 @@ export default function GroupDetailPage() {
 													);
 												})}
 											</div>
+											{selectedMembers.length === 0 && (
+												<p className="text-red-500 text-xs mt-1">
+													Select at least one person
+												</p>
+											)}
 										</div>
 										{form.formState.errors.root && (
 											<p className="text-red-500 text-sm">
