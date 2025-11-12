@@ -3,7 +3,7 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
 import helmet from 'helmet';
-import dotenv from 'dotenv';
+import { env } from './config/env';
 import { connectDatabase } from './config/database';
 import { connectRedis } from './config/redis';
 import { logger } from './utils/logger';
@@ -13,37 +13,34 @@ import authRoutes from './api/auth';
 import groupRoutes from './api/groups';
 import expenseRoutes from './api/expenses';
 
-// Load environment variables
-dotenv.config();
-
 const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    origin: env.FRONTEND_URL,
     credentials: true,
   },
 });
 
-const PORT = process.env.PORT || 4000;
+const PORT = env.PORT;
 
 // Middleware
 app.use(helmet());
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: env.FRONTEND_URL,
   credentials: true,
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Request logging
-app.use((req, res, next) => {
+app.use((req, _res, next) => {
   logger.info(`${req.method} ${req.path}`);
   next();
 });
 
 // Health check
-app.get('/health', (req, res) => {
+app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
@@ -72,7 +69,7 @@ async function startServer() {
     // Start listening
     httpServer.listen(PORT, () => {
       logger.info(`🎰 TableSplit backend running on port ${PORT}`);
-      logger.info(`Environment: ${process.env.NODE_ENV}`);
+      logger.info(`Environment: ${env.NODE_ENV}`);
     });
   } catch (error) {
     logger.error('Failed to start server:', error);

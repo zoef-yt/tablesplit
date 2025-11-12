@@ -7,9 +7,9 @@ export interface ApiError extends Error {
 
 export function errorHandler(
   err: ApiError,
-  req: Request,
+  _req: Request,
   res: Response,
-  next: NextFunction
+  _next: NextFunction
 ): void {
   logger.error('Error:', err);
 

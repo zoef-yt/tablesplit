@@ -76,20 +76,30 @@ TableSplit reimagines the mundane task of splitting bills as a cinematic ritual.
    ```bash
    git clone <repo-url>
    cd tablesplit
-   cp .env.example .env
    ```
 
-2. **Configure environment**
-   Edit `.env` and set:
-   - `JWT_SECRET` (generate with `openssl rand -base64 32`)
-   - SMTP credentials for email
+2. **Configure backend environment**
+   ```bash
+   cd backend
+   cp .env.example .env
+   # Edit .env and set JWT_SECRET, SMTP credentials
+   cd ..
+   ```
 
-3. **Start all services**
+3. **Configure frontend environment**
+   ```bash
+   cd frontend
+   cp .env.local.example .env.local
+   # Edit if needed (defaults should work)
+   cd ..
+   ```
+
+4. **Start all services**
    ```bash
    npm run docker:up
    ```
 
-4. **Access the app**
+5. **Access the app**
    - Frontend: http://localhost:3000
    - Backend API: http://localhost:4000
    - MongoDB: localhost:27017
@@ -99,12 +109,34 @@ TableSplit reimagines the mundane task of splitting bills as a cinematic ritual.
 
 1. **Install dependencies**
    ```bash
+   # Install backend dependencies
+   cd backend
    npm install
-   cd frontend && npm install
-   cd ../backend && npm install
+
+   # Install frontend dependencies
+   cd ../frontend
+   npm install
    ```
 
-2. **Start MongoDB and Redis**
+   **OR use convenience script:**
+   ```bash
+   npm run install:all
+   ```
+
+2. **Configure environments**
+   ```bash
+   # Backend
+   cd backend
+   cp .env.example .env
+   # Edit backend/.env
+
+   # Frontend
+   cd ../frontend
+   cp .env.local.example .env.local
+   # Edit frontend/.env.local
+   ```
+
+3. **Start MongoDB and Redis**
    ```bash
    # Terminal 1: MongoDB
    mongod --dbpath ./data/db
@@ -113,13 +145,13 @@ TableSplit reimagines the mundane task of splitting bills as a cinematic ritual.
    redis-server
    ```
 
-3. **Start backend**
+4. **Start backend**
    ```bash
    cd backend
    npm run dev
    ```
 
-4. **Start frontend**
+5. **Start frontend**
    ```bash
    cd frontend
    npm run dev

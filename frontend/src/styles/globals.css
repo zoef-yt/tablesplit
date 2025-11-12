@@ -2,15 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --felt-primary: #1a4d2e;
-  --felt-dark: #0f3322;
-  --felt-darker: #0a2617;
-  --gold-primary: #ffd700;
-  --gold-dark: #daa520;
-  --gold-darker: #8b6914;
-}
-
 * {
   box-sizing: border-box;
   padding: 0;
@@ -24,13 +15,7 @@ body {
 }
 
 body {
-  color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
+  @apply bg-gray-950 text-gray-100;
 }
 
 /* Custom scrollbar */
@@ -40,79 +25,13 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #0a2617;
+  @apply bg-gray-900;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #8b6914;
-  border-radius: 4px;
+  @apply bg-gray-700 rounded;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #daa520;
-}
-
-/* Poker Table specific styles */
-.poker-table {
-  background: radial-gradient(
-    ellipse at center,
-    var(--felt-primary) 0%,
-    var(--felt-dark) 70%,
-    var(--felt-darker) 100%
-  );
-  border: 8px solid var(--gold-darker);
-}
-
-/* Chip styles */
-.poker-chip {
-  display: inline-block;
-  width: 60px;
-  height: 60px;
-  background: radial-gradient(circle, var(--gold-primary), var(--gold-dark));
-  border-radius: 50%;
-  border: 4px solid var(--gold-darker);
-  position: relative;
-}
-
-.poker-chip::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 30px;
-  height: 30px;
-  border: 2px solid var(--gold-darker);
-  border-radius: 50%;
-}
-
-/* Active seat glow */
-.active-seat {
-  animation: pulse-glow 2s ease-in-out infinite;
-}
-
-/* Bottom navigation safe area */
-.bottom-nav-safe {
-  padding-bottom: env(safe-area-inset-bottom);
-}
-
-/* Touch targets */
-.touch-target {
-  min-width: 44px;
-  min-height: 44px;
-}
-
-/* No select for better mobile UX */
-.no-select {
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-  user-select: none;
-}
-
-/* Haptic feedback helper */
-@supports (padding: max(0px)) {
-  .safe-area-inset-bottom {
-    padding-bottom: max(16px, env(safe-area-inset-bottom));
-  }
+  @apply bg-gray-600;
 }
