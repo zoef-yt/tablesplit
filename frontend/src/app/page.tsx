@@ -36,24 +36,15 @@ export default function HomePage() {
             Group expenses meet poker table magic. Track, split, and settle with style.
           </p>
 
-          {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
+          {/* CTA Button */}
+          <div className="flex justify-center mb-16">
             <Link href="/auth/login">
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="px-8 py-4 bg-gold-500 text-slate-950 rounded-lg font-bold text-lg shadow-chip hover:bg-gold-400 transition-colors"
+                className="px-12 py-5 bg-gold-500 text-slate-950 rounded-lg font-bold text-xl shadow-chip hover:bg-gold-400 transition-colors shadow-glow-gold"
               >
                 Get Started
-              </motion.button>
-            </Link>
-            <Link href="/demo">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="px-8 py-4 bg-felt-700 text-white rounded-lg font-bold text-lg border-2 border-gold-700 hover:bg-felt-600 transition-colors"
-              >
-                View Demo
               </motion.button>
             </Link>
           </div>
