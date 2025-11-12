@@ -7,6 +7,7 @@ interface IGroupMember {
 }
 
 export interface IGroup extends Document {
+  _id: Types.ObjectId;
   name: string;
   theme: 'poker' | 'classic' | 'minimal';
   members: IGroupMember[];

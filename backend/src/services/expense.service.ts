@@ -1,7 +1,7 @@
 import { Expense, IExpense } from '../models/Expense';
 import { Balance } from '../models/Balance';
 import { Group } from '../models/Group';
-import { NotFoundError, BadRequestError, ForbiddenError } from '../middleware/errorHandler';
+import { NotFoundError, ForbiddenError } from '../middleware/errorHandler';
 import { logger } from '../utils/logger';
 import mongoose from 'mongoose';
 

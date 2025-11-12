@@ -3,7 +3,6 @@ import { authService } from '../services/auth.service';
 import { emailService } from '../services/email.service';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
 import { validate, schemas } from '../middleware/validation';
-import { logger } from '../utils/logger';
 
 const router = Router();
 

@@ -7,6 +7,7 @@ interface IExpenseSplit {
 }
 
 export interface IExpense extends Document {
+  _id: Types.ObjectId;
   groupId: Types.ObjectId;
   description: string;
   amount: number;
