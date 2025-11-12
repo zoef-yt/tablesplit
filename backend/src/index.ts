@@ -34,8 +34,23 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Request logging
-app.use((req, _res, next) => {
-  logger.info(`${req.method} ${req.path}`);
+app.use((req, res, next) => {
+  const start = Date.now();
+
+  // Log incoming request
+  logger.info(`➡️  ${req.method} ${req.url}`, {
+    body: req.body,
+    query: req.query,
+    ip: req.ip,
+  });
+
+  // Log response
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    const statusColor = res.statusCode >= 400 ? '❌' : '✅';
+    logger.info(`${statusColor} ${req.method} ${req.url} - ${res.statusCode} (${duration}ms)`);
+  });
+
   next();
 });
 

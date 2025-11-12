@@ -71,6 +71,15 @@ export function useJoinGroup() {
   });
 }
 
+export function useInviteToGroup(groupId: string) {
+  return useMutation({
+    mutationFn: async (data: { email?: string; inviterName: string }) => {
+      const response = await apiHelpers.post<{ inviteToken: string; inviteLink: string }>(`/groups/${groupId}/invite`, data);
+      return response.data!;
+    },
+  });
+}
+
 export function useLeaveGroup() {
   const router = useRouter();
   const queryClient = useQueryClient();

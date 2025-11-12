@@ -3,9 +3,9 @@
 import { useParams, useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Plus, Receipt, Loader2, Users as UsersIcon, IndianRupee } from 'lucide-react';
+import { ArrowLeft, Plus, Receipt, Loader2, Users as UsersIcon, IndianRupee, UserPlus, Copy, Check } from 'lucide-react';
 import { useAuthStore } from '@/lib/store/auth';
-import { useGroup } from '@/lib/hooks/useGroups';
+import { useGroup, useInviteToGroup } from '@/lib/hooks/useGroups';
 import { useBalances, useExpenses, useCreateExpense } from '@/lib/hooks/useExpenses';
 import { useRealtimeUpdates } from '@/lib/hooks/useRealtimeUpdates';
 import { Button } from '@/components/ui/button';
@@ -42,6 +42,9 @@ export default function GroupDetailPage() {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
   const [isExpenseDialogOpen, setIsExpenseDialogOpen] = useState(false);
+  const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
+  const [inviteLink, setInviteLink] = useState('');
+  const [copied, setCopied] = useState(false);
 
   const groupId = params.id as string;
 
@@ -49,6 +52,7 @@ export default function GroupDetailPage() {
   const { data: balances = [] } = useBalances(groupId);
   const { data: expenses = [] } = useExpenses(groupId);
   const createExpenseMutation = useCreateExpense(groupId);
+  const inviteMutation = useInviteToGroup(groupId);
 
   useRealtimeUpdates(groupId);
 
@@ -72,6 +76,22 @@ export default function GroupDetailPage() {
 
     setIsExpenseDialogOpen(false);
     form.reset();
+  };
+
+  const onGenerateInvite = async () => {
+    if (!user) return;
+
+    const result = await inviteMutation.mutateAsync({
+      inviterName: user.name,
+    });
+
+    setInviteLink(result.inviteLink);
+  };
+
+  const onCopyInviteLink = () => {
+    navigator.clipboard.writeText(inviteLink);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   if (!user) {
@@ -120,7 +140,77 @@ export default function GroupDetailPage() {
               <span>{group.members.length} members</span>
             </div>
           </div>
-          <div className="w-10" /> {/* Spacer for centering */}
+          <Dialog open={isInviteDialogOpen} onOpenChange={setIsInviteDialogOpen}>
+            <DialogTrigger asChild>
+              <button
+                onClick={() => setInviteLink('')}
+                className="p-2 hover:bg-gray-800 rounded-full transition-colors text-primary-500"
+                title="Invite members"
+              >
+                <UserPlus className="w-6 h-6" />
+              </button>
+            </DialogTrigger>
+            <DialogContent className="bg-gray-900 border-gray-800">
+              <DialogHeader>
+                <DialogTitle className="text-white">Invite People to {group.name}</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                {!inviteLink ? (
+                  <div className="text-center py-8">
+                    <p className="text-gray-400 mb-4">Generate an invite link to share with friends</p>
+                    <Button
+                      onClick={onGenerateInvite}
+                      disabled={inviteMutation.isPending}
+                      className="bg-primary-600 hover:bg-primary-700"
+                    >
+                      {inviteMutation.isPending ? (
+                        <>
+                          <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                          Generating...
+                        </>
+                      ) : (
+                        <>
+                          <UserPlus className="w-5 h-5 mr-2" />
+                          Generate Invite Link
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <p className="text-gray-400 text-sm">Share this link with anyone you want to invite:</p>
+                    <div className="flex gap-2">
+                      <Input
+                        value={inviteLink}
+                        readOnly
+                        className="bg-gray-800 border-gray-700 text-white flex-1"
+                      />
+                      <Button
+                        onClick={onCopyInviteLink}
+                        variant="outline"
+                        className="border-gray-700"
+                      >
+                        {copied ? (
+                          <>
+                            <Check className="w-5 h-5 mr-2" />
+                            Copied!
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-5 h-5 mr-2" />
+                            Copy
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                    <p className="text-gray-500 text-xs">
+                      Anyone with this link can join the group. The link doesn&apos;t expire.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
 
         {/* My Balance */}
