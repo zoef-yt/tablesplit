@@ -3,7 +3,6 @@ import { Balance, IBalance } from '../models/Balance';
 import { Group } from '../models/Group';
 import { NotFoundError, ForbiddenError } from '../middleware/errorHandler';
 import { logger } from '../utils/logger';
-import mongoose from 'mongoose';
 
 interface Settlement {
   from: string;
