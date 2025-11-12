@@ -67,7 +67,7 @@ export default function GroupDetailPage() {
       description: values.description,
       amount: values.amount,
       paidBy: user._id,
-      selectedMembers: group?.members.map((m) => m.userId._id || m.userId) || [],
+      selectedMembers: group?.members.map((m) => m.userId) || [],
     });
 
     setIsExpenseDialogOpen(false);
@@ -251,7 +251,7 @@ export default function GroupDetailPage() {
                     <div className="flex-1">
                       <h3 className="text-white font-medium mb-1">{expense.description}</h3>
                       <p className="text-gray-400 text-sm">
-                        Paid by {expense.paidBy.name || 'Unknown'}
+                        Paid by {expense.paidByUser?.name || 'Unknown'}
                       </p>
                       <p className="text-gray-500 text-xs mt-1">
                         {new Date(expense.createdAt).toLocaleDateString('en-IN', {

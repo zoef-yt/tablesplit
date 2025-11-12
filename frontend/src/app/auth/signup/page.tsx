@@ -10,6 +10,7 @@ import { useRouter } from 'next/navigation';
 import { useMutation } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api';
 import { useAuthStore } from '@/lib/store/auth';
+import { AuthResponse } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -33,16 +34,6 @@ const signupSchema = z.object({
 
 type SignupFormValues = z.infer<typeof signupSchema>;
 
-interface SignupResponse {
-  user: {
-    _id: string;
-    email: string;
-    name: string;
-    avatar?: string;
-  };
-  token: string;
-}
-
 export default function SignupPage() {
   const router = useRouter();
   const setAuth = useAuthStore((state) => state.setAuth);
@@ -59,11 +50,11 @@ export default function SignupPage() {
 
   const signupMutation = useMutation({
     mutationFn: async (data: { name: string; email: string; password: string }) => {
-      const response = await apiHelpers.post<SignupResponse>('/auth/signup', data);
+      const response = await apiHelpers.post<AuthResponse>('/auth/signup', data);
       return response.data!;
     },
     onSuccess: (data) => {
-      setAuth(data.user, data.token);
+      setAuth(data.user as any, data.token);
       router.push('/groups');
     },
     onError: (error: any) => {
@@ -177,7 +168,7 @@ export default function SignupPage() {
                         <Input
                           {...field}
                           type="password"
-                          placeholder=""""""""""
+                          placeholder="••••••••"
                           className="pl-10 bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 focus:border-primary-500"
                         />
                       </div>
@@ -200,7 +191,7 @@ export default function SignupPage() {
                         <Input
                           {...field}
                           type="password"
-                          placeholder=""""""""""
+                          placeholder="••••••••"
                           className="pl-10 bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 focus:border-primary-500"
                         />
                       </div>

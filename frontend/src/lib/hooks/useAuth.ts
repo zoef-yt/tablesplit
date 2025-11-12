@@ -31,21 +31,18 @@ export function useLogin() {
 }
 
 export function useVerifyMagicLink(token: string) {
-  const router = useRouter();
   const setAuth = useAuthStore((state) => state.setAuth);
 
   return useQuery({
     queryKey: ['verify-magic-link', token],
     queryFn: async () => {
       const response = await apiHelpers.get<AuthResponse>(`/auth/verify/${token}`);
-      return response.data!;
+      const data = response.data!;
+      setAuth(data.user, data.token);
+      return data;
     },
     retry: false,
     enabled: !!token,
-    onSuccess: (data) => {
-      setAuth(data.user, data.token);
-      setTimeout(() => router.push('/groups'), 1000);
-    },
   });
 }
 

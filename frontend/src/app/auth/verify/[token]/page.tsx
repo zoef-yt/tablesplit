@@ -1,6 +1,7 @@
 'use client';
 
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Loader2, CheckCircle, XCircle } from 'lucide-react';
 import { useVerifyMagicLink } from '@/lib/hooks/useAuth';
@@ -9,9 +10,16 @@ import Link from 'next/link';
 
 export default function VerifyMagicLinkPage() {
   const params = useParams();
+  const router = useRouter();
   const token = params.token as string;
 
   const { data, isLoading, isError, error } = useVerifyMagicLink(token);
+
+  useEffect(() => {
+    if (data && !isError) {
+      setTimeout(() => router.push('/groups'), 1000);
+    }
+  }, [data, isError, router]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-felt-900 to-slate-950 flex items-center justify-center p-4">
@@ -28,7 +36,7 @@ export default function VerifyMagicLinkPage() {
           </>
         )}
 
-        {data && !isError && (
+        {(data && !isError) ? (
           <motion.div
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
@@ -38,7 +46,7 @@ export default function VerifyMagicLinkPage() {
             <h2 className="text-2xl font-bold text-white mb-2">Welcome back! 🎰</h2>
             <p className="text-gray-400">Redirecting to your groups...</p>
           </motion.div>
-        )}
+        ) : null}
 
         {isError && (
           <motion.div

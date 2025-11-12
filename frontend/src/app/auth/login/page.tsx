@@ -114,7 +114,7 @@ export default function LoginPage() {
               </div>
               <h2 className="text-2xl font-bold text-white mb-2">Check your email!</h2>
               <p className="text-gray-400 mb-6">
-                We've sent a magic link to <strong className="text-white">{emailForMagicLink}</strong>
+                We&apos;ve sent a magic link to <strong className="text-white">{emailForMagicLink}</strong>
               </p>
               <Button
                 variant="ghost"
@@ -238,7 +238,7 @@ export default function LoginPage() {
           {!magicLinkSent && (
             <div className="mt-6 text-center">
               <p className="text-gray-400 text-sm">
-                Don't have an account?{' '}
+                Don&apos;t have an account?{' '}
                 <Link href="/auth/signup" className="text-primary-500 hover:text-primary-400 font-medium">
                   Sign Up
                 </Link>

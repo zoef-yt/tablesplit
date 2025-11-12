@@ -48,7 +48,7 @@ export function useCreateExpense(groupId: string) {
       selectedMembers: string[];
       category?: string;
     }) => {
-      const response = await apiHelpers.post('/expenses', {
+      const response = await apiHelpers.post<{ expense: Expense; updatedBalances: Balance[] }>('/expenses', {
         groupId,
         ...data,
       });
