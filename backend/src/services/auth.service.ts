@@ -161,7 +161,7 @@ export class AuthService {
    */
   async updateProfile(
     userId: string,
-    updates: { name?: string; avatar?: string }
+    updates: { name?: string; avatar?: string; upiId?: string }
   ): Promise<IUser> {
     const user = await User.findByIdAndUpdate(
       userId,

@@ -146,9 +146,9 @@ router.get('/me', authenticateToken, async (req: AuthRequest, res: Response, nex
  */
 router.put('/profile', authenticateToken, async (req: AuthRequest, res: Response, next) => {
   try {
-    const { name, avatar } = req.body;
+    const { name, avatar, upiId } = req.body;
 
-    const user = await authService.updateProfile(req.userId!, { name, avatar });
+    const user = await authService.updateProfile(req.userId!, { name, avatar, upiId });
 
     res.json({
       success: true,
