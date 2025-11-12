@@ -93,7 +93,10 @@ export default function GroupDetailPage() {
 			description: values.description,
 			amount: values.amount,
 			paidBy: user._id,
-			selectedMembers: group?.members.map((m) => m.userId) || [],
+			selectedMembers:
+				group?.members.map((m) =>
+					typeof m.userId === "object" ? m.userId._id : m.userId,
+				) || [],
 		});
 
 		setIsExpenseDialogOpen(false);
@@ -305,30 +308,35 @@ export default function GroupDetailPage() {
 					<div className="space-y-3">
 						{group.members.map((member, index) => {
 							const memberUser =
-								typeof member.userId === "object"
+								typeof member.userId === "object" && member.userId
 									? member.userId
-									: { _id: member.userId, name: "Unknown", email: "" };
+									: null;
+
+							const userId =
+								typeof member.userId === "object" && member.userId
+									? member.userId._id
+									: member.userId;
+							const userName = memberUser?.name || "Unknown User";
+							const userEmail = memberUser?.email || "No email";
 
 							return (
 								<div
-									key={`${memberUser._id}-${index}`}
+									key={`${userId}-${index}`}
 									className="flex items-center justify-between p-3 rounded-lg bg-gray-900/50 border border-gray-700/50"
 								>
 									<div className="flex items-center gap-3">
 										<div className="w-10 h-10 rounded-full bg-primary-500/20 flex items-center justify-center text-primary-400 font-semibold">
-											{memberUser.name?.charAt(0).toUpperCase() || "?"}
+											{userName.charAt(0).toUpperCase()}
 										</div>
 										<div>
-											<p className="text-white font-medium">
-												{memberUser.name || "Unknown User"}
-											</p>
-											<p className="text-gray-400 text-sm">
-												{memberUser.email || "No email"}
-											</p>
+											<p className="text-white font-medium">{userName}</p>
+											<p className="text-gray-400 text-sm">{userEmail}</p>
 										</div>
 									</div>
 									<div className="text-right">
-										<p className="text-gray-500 text-xs">Seat {member.seatPosition + 1}</p>
+										<p className="text-gray-500 text-xs">
+											Seat {member.seatPosition + 1}
+										</p>
 										<p className="text-gray-500 text-xs">
 											{new Date(member.joinedAt).toLocaleDateString()}
 										</p>
