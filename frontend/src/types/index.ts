@@ -11,8 +11,7 @@ export interface User {
 
 // Group Types
 export interface GroupMember {
-	userId: string;
-	user?: User;
+	userId: string | User; // Can be ObjectId string or populated User object
 	seatPosition: number;
 	joinedAt: Date;
 }

@@ -20,6 +20,8 @@ import {
 	useBalances,
 	useExpenses,
 	useCreateExpense,
+	useSettlements,
+	useRecordSettlement,
 } from "@/lib/hooks/useExpenses";
 import { useRealtimeUpdates } from "@/lib/hooks/useRealtimeUpdates";
 import { Button } from "@/components/ui/button";
@@ -43,6 +45,8 @@ import {
 	FormMessage,
 } from "@/components/ui/form";
 import { formatCurrency } from "@/lib/utils";
+import { SettlementPanel } from "@/components/SettlementPanel";
+import type { User } from "@/types";
 
 const expenseSchema = z.object({
 	description: z.string().min(1, "Description is required"),
@@ -68,8 +72,10 @@ export default function GroupDetailPage() {
 	const { data: group, isLoading: groupLoading } = useGroup(groupId);
 	const { data: balances = [] } = useBalances(groupId);
 	const { data: expenses = [] } = useExpenses(groupId);
+	const { data: settlements = [] } = useSettlements(groupId);
 	const createExpenseMutation = useCreateExpense(groupId);
 	const inviteMutation = useInviteToGroup(groupId);
+	const recordSettlementMutation = useRecordSettlement(groupId);
 
 	useRealtimeUpdates(groupId);
 
@@ -83,14 +89,15 @@ export default function GroupDetailPage() {
 	// Initialize selected members when group loads
 	useEffect(() => {
 		if (group && selectedMembers.length === 0) {
-			const memberIds = [
-				...new Set(
-					group.members.map((m) =>
-						typeof m.userId === "object" && m.userId ? m.userId._id : m.userId,
-					),
-				),
-			].filter((id): id is string => typeof id === "string");
-			setSelectedMembers(memberIds);
+			const memberIds: string[] = [];
+			for (const m of group.members) {
+				const userId =
+					typeof m.userId === "object" && m.userId ? m.userId._id : m.userId;
+				if (typeof userId === "string") {
+					memberIds.push(userId);
+				}
+			}
+			setSelectedMembers([...new Set(memberIds)]);
 		}
 	}, [group, selectedMembers.length]);
 
@@ -126,14 +133,15 @@ export default function GroupDetailPage() {
 			setIsExpenseDialogOpen(false);
 			form.reset();
 			// Reset selected members to all members
-			const memberIds = [
-				...new Set(
-					group.members.map((m) =>
-						typeof m.userId === "object" && m.userId ? m.userId._id : m.userId,
-					),
-				),
-			].filter((id): id is string => typeof id === "string");
-			setSelectedMembers(memberIds);
+			const memberIds: string[] = [];
+			for (const m of group.members) {
+				const userId =
+					typeof m.userId === "object" && m.userId ? m.userId._id : m.userId;
+				if (typeof userId === "string") {
+					memberIds.push(userId);
+				}
+			}
+			setSelectedMembers([...new Set(memberIds)]);
 		} catch (error) {
 			form.setError("root", {
 				message:
@@ -191,6 +199,30 @@ export default function GroupDetailPage() {
 	}
 
 	const myBalance = balances.find((b) => b.userId === user._id);
+
+	// Create users lookup object from group members for SettlementPanel
+	const usersLookup: Record<string, User> = {};
+	if (group) {
+		for (const member of group.members) {
+			const memberUser =
+				typeof member.userId === "object" && member.userId
+					? member.userId
+					: null;
+			if (memberUser) {
+				usersLookup[memberUser._id] = memberUser;
+			}
+		}
+	}
+
+	const handleMarkAsPaid = async (from: string, to: string, amount: number) => {
+		try {
+			await recordSettlementMutation.mutateAsync({ from, to, amount });
+		} catch (error) {
+			alert(
+				error instanceof Error ? error.message : "Failed to record settlement",
+			);
+		}
+	};
 
 	return (
 		<div className="min-h-screen bg-gray-950">
@@ -387,6 +419,25 @@ export default function GroupDetailPage() {
 						})}
 					</div>
 				</motion.div>
+
+				{/* Settlements Section */}
+				{settlements.length > 0 && (
+					<motion.div
+						initial={{ opacity: 0, y: 20 }}
+						animate={{ opacity: 1, y: 0 }}
+						transition={{ delay: 0.2 }}
+						className="mb-8 p-6 rounded-xl bg-gray-800/50 border border-gray-700"
+					>
+						<SettlementPanel
+							groupId={groupId}
+							groupName={group.name}
+							settlements={settlements}
+							users={usersLookup}
+							currentUserId={user._id}
+							onMarkAsPaid={handleMarkAsPaid}
+						/>
+					</motion.div>
+				)}
 
 				{/* Expenses List */}
 				<div className="mb-20">
