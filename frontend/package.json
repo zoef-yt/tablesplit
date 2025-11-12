@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
     "test": "jest",
     "test:watch": "jest --watch"
   },
@@ -32,6 +34,7 @@
     "zustand": "^4.5.5"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.3.5",
     "@jest/globals": "^29.7.0",
     "@types/node": "^22.5.5",
     "@types/react": "^18.3.8",
