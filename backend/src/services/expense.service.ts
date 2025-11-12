@@ -3,6 +3,7 @@ import { Balance, IBalance } from '../models/Balance';
 import { Group } from '../models/Group';
 import { NotFoundError, ForbiddenError } from '../middleware/errorHandler';
 import { logger } from '../utils/logger';
+import { Types } from 'mongoose';
 
 interface Settlement {
   from: string;
@@ -168,6 +169,137 @@ export class ExpenseService {
   }
 
   /**
+   * Delete an expense
+   */
+  async deleteExpense(
+    userId: string,
+    expenseId: string
+  ): Promise<{ deletedExpense: IExpense; updatedBalances: IBalance[] }> {
+    const expense = await Expense.findById(expenseId);
+
+    if (!expense) {
+      throw new NotFoundError('Expense not found');
+    }
+
+    // Verify user is the one who paid (only they can delete)
+    if (expense.paidBy.toString() !== userId) {
+      throw new ForbiddenError('Only the person who paid can delete this expense');
+    }
+
+    const groupId = expense.groupId.toString();
+
+    // Verify user is member of group
+    const group = await Group.findById(groupId);
+    if (!group) {
+      throw new NotFoundError('Group not found');
+    }
+
+    const isMember = group.members.some((m) => m.userId.toString() === userId);
+    if (!isMember) {
+      throw new ForbiddenError('You are not a member of this group');
+    }
+
+    // Reverse the balance changes
+    const splitsAsStrings = expense.splits.map(s => ({
+      userId: s.userId.toString(),
+      amount: s.amount
+    }));
+    await this.reverseBalances(groupId, expense.paidBy.toString(), splitsAsStrings);
+
+    // Delete the expense
+    await Expense.findByIdAndDelete(expenseId);
+
+    logger.info(`Expense deleted: ${expenseId} from group ${groupId}`);
+
+    // Return updated balances
+    const updatedBalances = await this.getGroupBalances(userId, groupId);
+    return { deletedExpense: expense, updatedBalances };
+  }
+
+  /**
+   * Update an expense
+   */
+  async updateExpense(
+    userId: string,
+    expenseId: string,
+    description?: string,
+    amount?: number,
+    category?: string,
+    selectedMembers?: string[]
+  ): Promise<{ expense: IExpense; updatedBalances: IBalance[] }> {
+    const expense = await Expense.findById(expenseId);
+
+    if (!expense) {
+      throw new NotFoundError('Expense not found');
+    }
+
+    // Verify user is the one who paid (only they can edit)
+    if (expense.paidBy.toString() !== userId) {
+      throw new ForbiddenError('Only the person who paid can edit this expense');
+    }
+
+    const groupId = expense.groupId.toString();
+
+    // Verify user is member of group
+    const group = await Group.findById(groupId);
+    if (!group) {
+      throw new NotFoundError('Group not found');
+    }
+
+    const isMember = group.members.some((m) => m.userId.toString() === userId);
+    if (!isMember) {
+      throw new ForbiddenError('You are not a member of this group');
+    }
+
+    // Reverse old balance changes
+    const oldSplitsAsStrings = expense.splits.map(s => ({
+      userId: s.userId.toString(),
+      amount: s.amount
+    }));
+    await this.reverseBalances(groupId, expense.paidBy.toString(), oldSplitsAsStrings);
+
+    // Update expense fields
+    if (description !== undefined) expense.description = description;
+    if (category !== undefined) expense.category = category;
+
+    // Recalculate splits if amount or members changed
+    if (amount !== undefined || selectedMembers !== undefined) {
+      const newAmount = amount !== undefined ? amount : expense.amount;
+      const newMembers = selectedMembers !== undefined ? selectedMembers : expense.splits.map(s => s.userId.toString());
+
+      expense.amount = newAmount;
+      const newSplits = this.equalSplit(newAmount, newMembers);
+
+      // Convert to ObjectId types for Mongoose
+      expense.splits = newSplits.map(s => ({
+        userId: new Types.ObjectId(s.userId),
+        amount: s.amount,
+        percentage: s.percentage
+      }));
+    }
+
+    // Apply new balance changes
+    const newSplitsAsStrings = expense.splits.map(s => ({
+      userId: s.userId.toString(),
+      amount: s.amount
+    }));
+    await this.updateBalances(groupId, expense.paidBy.toString(), newSplitsAsStrings);
+
+    // Save expense
+    await expense.save();
+
+    // Populate expense with user information
+    await expense.populate('paidBy', 'name email avatar');
+    await expense.populate('splits.userId', 'name email avatar');
+
+    logger.info(`Expense updated: ${expenseId} in group ${groupId}`);
+
+    // Return updated balances
+    const updatedBalances = await this.getGroupBalances(userId, groupId);
+    return { expense, updatedBalances };
+  }
+
+  /**
    * Equal split calculation
    */
   private equalSplit(
@@ -219,6 +351,44 @@ export class ExpenseService {
 
     const results = await Promise.all(updates);
     return results;
+  }
+
+  /**
+   * Reverse balances (for expense deletion or before update)
+   */
+  private async reverseBalances(
+    groupId: string,
+    paidBy: string,
+    splits: Array<{ userId: string; amount: number }>
+  ): Promise<void> {
+    const updates = [];
+
+    for (const split of splits) {
+      const userId = split.userId;
+
+      if (userId === paidBy) {
+        // Reverse payer's balance (subtract the net change)
+        const netChange = splits.reduce((sum, s) => sum + s.amount, 0) - split.amount;
+        updates.push(
+          Balance.findOneAndUpdate(
+            { groupId, userId },
+            { $inc: { balance: -netChange }, lastUpdated: new Date() },
+            { upsert: true }
+          )
+        );
+      } else {
+        // Reverse others' balance (add back their share)
+        updates.push(
+          Balance.findOneAndUpdate(
+            { groupId, userId },
+            { $inc: { balance: split.amount }, lastUpdated: new Date() },
+            { upsert: true }
+          )
+        );
+      }
+    }
+
+    await Promise.all(updates);
   }
 
   /**

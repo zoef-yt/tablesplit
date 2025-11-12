@@ -47,6 +47,7 @@ import {
 import { formatCurrency } from "@/lib/utils";
 import { SettlementPanel } from "@/components/SettlementPanel";
 import { ExpenseDetailModal } from "@/components/ExpenseDetailModal";
+import { Navigation } from "@/components/Navigation";
 import type { User, Expense } from "@/types";
 
 const expenseSchema = z.object({
@@ -234,6 +235,7 @@ export default function GroupDetailPage() {
 
 	return (
 		<div className="min-h-screen bg-gray-950">
+			<Navigation />
 			<div className="absolute inset-0 bg-gradient-to-br from-primary-900/10 via-transparent to-purple-900/10" />
 
 			<div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -706,6 +708,8 @@ export default function GroupDetailPage() {
 						setSelectedExpense(null);
 					}}
 					currentUserId={user._id}
+					groupId={groupId}
+					groupMembers={Object.values(usersLookup)}
 				/>
 			</div>
 		</div>

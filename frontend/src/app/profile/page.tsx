@@ -4,7 +4,6 @@ import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
-	ArrowLeft,
 	User as UserIcon,
 	Mail,
 	Loader2,
@@ -30,6 +29,7 @@ import {
 	FormDescription,
 } from "@/components/ui/form";
 import { isValidUpiId, getUpiProvider } from "@/lib/upi";
+import { Navigation } from "@/components/Navigation";
 
 const profileSchema = z.object({
 	name: z.string().min(2, "Name must be at least 2 characters"),
@@ -114,21 +114,15 @@ export default function ProfilePage() {
 
 	return (
 		<div className="min-h-screen bg-gray-950">
+			<Navigation />
 			<div className="absolute inset-0 bg-gradient-to-br from-primary-900/10 via-transparent to-purple-900/10" />
 
 			<div className="relative max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
 				{/* Header */}
-				<div className="flex items-center justify-between mb-8">
-					<button
-						onClick={() => router.push("/groups")}
-						className="p-2 hover:bg-gray-800 rounded-full transition-colors"
-					>
-						<ArrowLeft className="w-6 h-6 text-white" />
-					</button>
+				<div className="text-center mb-8">
 					<h1 className="text-2xl sm:text-3xl font-bold text-white">
 						My Profile
 					</h1>
-					<div className="w-10" /> {/* Spacer for centering */}
 				</div>
 
 				{/* Profile Card */}

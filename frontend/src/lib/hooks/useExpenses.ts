@@ -108,3 +108,49 @@ export function useRecordSettlement(groupId: string) {
 		},
 	});
 }
+
+export function useDeleteExpense(groupId: string) {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: async (expenseId: string) => {
+			const response = await apiHelpers.delete(`/expenses/${expenseId}`);
+			return response.data;
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ["expenses", groupId] });
+			queryClient.invalidateQueries({ queryKey: ["balances", groupId] });
+			queryClient.invalidateQueries({ queryKey: ["settlements", groupId] });
+
+			vibrate(50);
+		},
+	});
+}
+
+export function useUpdateExpense(groupId: string) {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: async (data: {
+			expenseId: string;
+			description?: string;
+			amount?: number;
+			category?: string;
+			selectedMembers?: string[];
+		}) => {
+			const { expenseId, ...updateData } = data;
+			const response = await apiHelpers.put(
+				`/expenses/${expenseId}`,
+				updateData,
+			);
+			return response.data;
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ["expenses", groupId] });
+			queryClient.invalidateQueries({ queryKey: ["balances", groupId] });
+			queryClient.invalidateQueries({ queryKey: ["settlements", groupId] });
+
+			vibrate(50);
+		},
+	});
+}

@@ -1,9 +1,23 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { X, Receipt, Users, Calendar, Tag, Trash2, Edit2, IndianRupee } from "lucide-react";
+import {
+	X,
+	Receipt,
+	Users,
+	Calendar,
+	Tag,
+	Trash2,
+	Edit2,
+	IndianRupee,
+	Save,
+	XCircle,
+	Loader2,
+} from "lucide-react";
 import { Expense, User } from "@/types";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
 	Dialog,
 	DialogContent,
@@ -11,14 +25,15 @@ import {
 	DialogTitle,
 } from "@/components/ui/dialog";
 import { formatCurrency } from "@/lib/utils";
+import { useDeleteExpense, useUpdateExpense } from "@/lib/hooks/useExpenses";
 
 interface ExpenseDetailModalProps {
 	expense: Expense | null;
 	isOpen: boolean;
 	onClose: () => void;
 	currentUserId: string;
-	onDelete?: (expenseId: string) => void;
-	onEdit?: (expense: Expense) => void;
+	groupId: string;
+	groupMembers: User[];
 }
 
 export function ExpenseDetailModal({
@@ -26,9 +41,31 @@ export function ExpenseDetailModal({
 	isOpen,
 	onClose,
 	currentUserId,
-	onDelete,
-	onEdit,
+	groupId,
+	groupMembers,
 }: ExpenseDetailModalProps) {
+	const [isEditMode, setIsEditMode] = useState(false);
+	const [editDescription, setEditDescription] = useState("");
+	const [editAmount, setEditAmount] = useState("");
+	const [editCategory, setEditCategory] = useState("");
+	const [editSelectedMembers, setEditSelectedMembers] = useState<string[]>([]);
+
+	const deleteExpenseMutation = useDeleteExpense(groupId);
+	const updateExpenseMutation = useUpdateExpense(groupId);
+
+	useEffect(() => {
+		if (expense) {
+			setEditDescription(expense.description);
+			setEditAmount(expense.amount.toString());
+			setEditCategory(expense.category || "");
+			setEditSelectedMembers(
+				expense.splits.map((s) =>
+					typeof s.userId === "object" ? s.userId._id : s.userId,
+				),
+			);
+		}
+	}, [expense]);
+
 	if (!expense) return null;
 
 	const paidByUser =
@@ -38,23 +75,69 @@ export function ExpenseDetailModal({
 	const paidByName = paidByUser?.name || "Unknown";
 	const isPaidByMe = paidByUser?._id === currentUserId;
 
-	const handleDelete = () => {
-		if (onDelete) {
-			const confirmed = confirm(
-				`Are you sure you want to delete "${expense.description}"? This action cannot be undone.`,
-			);
-			if (confirmed) {
-				onDelete(expense._id);
+	const handleDelete = async () => {
+		const confirmed = confirm(
+			`Are you sure you want to delete "${expense.description}"? This will reverse all balance changes.`,
+		);
+		if (confirmed) {
+			try {
+				await deleteExpenseMutation.mutateAsync(expense._id);
 				onClose();
+			} catch (error) {
+				alert(
+					error instanceof Error
+						? error.message
+						: "Failed to delete expense",
+				);
 			}
 		}
 	};
 
-	const handleEdit = () => {
-		if (onEdit) {
-			onEdit(expense);
-			onClose();
+	const handleSaveEdit = async () => {
+		if (!editDescription.trim()) {
+			alert("Description is required");
+			return;
 		}
+
+		const amount = parseFloat(editAmount);
+		if (isNaN(amount) || amount <= 0) {
+			alert("Please enter a valid amount");
+			return;
+		}
+
+		if (editSelectedMembers.length === 0) {
+			alert("Please select at least one person to split with");
+			return;
+		}
+
+		try {
+			await updateExpenseMutation.mutateAsync({
+				expenseId: expense._id,
+				description: editDescription,
+				amount,
+				category: editCategory || undefined,
+				selectedMembers: editSelectedMembers,
+			});
+			setIsEditMode(false);
+			onClose();
+		} catch (error) {
+			alert(
+				error instanceof Error ? error.message : "Failed to update expense",
+			);
+		}
+	};
+
+	const handleCancelEdit = () => {
+		// Reset to original values
+		setEditDescription(expense.description);
+		setEditAmount(expense.amount.toString());
+		setEditCategory(expense.category || "");
+		setEditSelectedMembers(
+			expense.splits.map((s) =>
+				typeof s.userId === "object" ? s.userId._id : s.userId,
+			),
+		);
+		setIsEditMode(false);
 	};
 
 	return (
@@ -64,7 +147,7 @@ export function ExpenseDetailModal({
 					<div className="flex items-center justify-between">
 						<DialogTitle className="text-white text-xl flex items-center gap-2">
 							<Receipt className="w-5 h-5 text-primary-500" />
-							Expense Details
+							{isEditMode ? "Edit Expense" : "Expense Details"}
 						</DialogTitle>
 						<button
 							onClick={onClose}
@@ -78,52 +161,94 @@ export function ExpenseDetailModal({
 				<div className="space-y-6 mt-4">
 					{/* Main Info */}
 					<div className="p-4 rounded-xl bg-gray-800/50 border border-gray-700">
-						<div className="flex items-start justify-between mb-3">
-							<div className="flex-1">
-								<h3 className="text-2xl font-bold text-white mb-2">
-									{expense.description}
-								</h3>
-								{expense.category && (
-									<div className="flex items-center gap-2 mb-2">
-										<Tag className="w-4 h-4 text-primary-400" />
-										<span className="px-2 py-0.5 bg-primary-500/20 text-primary-400 text-sm rounded">
-											{expense.category}
+						{isEditMode ? (
+							<div className="space-y-4">
+								<div>
+									<label className="text-gray-300 text-sm font-medium block mb-2">
+										Description
+									</label>
+									<Input
+										value={editDescription}
+										onChange={(e) => setEditDescription(e.target.value)}
+										placeholder="Description"
+										className="bg-gray-900 border-gray-700 text-white"
+									/>
+								</div>
+								<div>
+									<label className="text-gray-300 text-sm font-medium block mb-2">
+										Amount (₹)
+									</label>
+									<Input
+										type="number"
+										step="0.01"
+										value={editAmount}
+										onChange={(e) => setEditAmount(e.target.value)}
+										placeholder="0.00"
+										className="bg-gray-900 border-gray-700 text-white"
+									/>
+								</div>
+								<div>
+									<label className="text-gray-300 text-sm font-medium block mb-2">
+										Category (Optional)
+									</label>
+									<Input
+										value={editCategory}
+										onChange={(e) => setEditCategory(e.target.value)}
+										placeholder="Food, Transport, etc."
+										className="bg-gray-900 border-gray-700 text-white"
+									/>
+								</div>
+							</div>
+						) : (
+							<div>
+								<div className="flex items-start justify-between mb-3">
+									<div className="flex-1">
+										<h3 className="text-2xl font-bold text-white mb-2">
+											{expense.description}
+										</h3>
+										{expense.category && (
+											<div className="flex items-center gap-2 mb-2">
+												<Tag className="w-4 h-4 text-primary-400" />
+												<span className="px-2 py-0.5 bg-primary-500/20 text-primary-400 text-sm rounded">
+													{expense.category}
+												</span>
+											</div>
+										)}
+										<div className="flex items-center gap-2 text-gray-400 text-sm">
+											<Calendar className="w-4 h-4" />
+											<span>
+												{new Date(expense.createdAt).toLocaleString("en-IN", {
+													day: "numeric",
+													month: "long",
+													year: "numeric",
+													hour: "2-digit",
+													minute: "2-digit",
+												})}
+											</span>
+										</div>
+									</div>
+									<div className="text-right">
+										<div className="flex items-center gap-1 text-3xl font-bold text-white">
+											<IndianRupee className="w-7 h-7" />
+											<span>{expense.amount.toFixed(2)}</span>
+										</div>
+									</div>
+								</div>
+
+								<div className="pt-3 border-t border-gray-700">
+									<p className="text-gray-400 text-sm mb-1">Paid by</p>
+									<div className="flex items-center gap-2">
+										<div className="w-8 h-8 rounded-full bg-primary-500/20 flex items-center justify-center text-primary-400 font-semibold text-sm">
+											{paidByName.charAt(0).toUpperCase()}
+										</div>
+										<span className="text-white font-medium">
+											{paidByName}
+											{isPaidByMe && " (You)"}
 										</span>
 									</div>
-								)}
-								<div className="flex items-center gap-2 text-gray-400 text-sm">
-									<Calendar className="w-4 h-4" />
-									<span>
-										{new Date(expense.createdAt).toLocaleString("en-IN", {
-											day: "numeric",
-											month: "long",
-											year: "numeric",
-											hour: "2-digit",
-											minute: "2-digit",
-										})}
-									</span>
 								</div>
 							</div>
-							<div className="text-right">
-								<div className="flex items-center gap-1 text-3xl font-bold text-white">
-									<IndianRupee className="w-7 h-7" />
-									<span>{expense.amount.toFixed(2)}</span>
-								</div>
-							</div>
-						</div>
-
-						<div className="pt-3 border-t border-gray-700">
-							<p className="text-gray-400 text-sm mb-1">Paid by</p>
-							<div className="flex items-center gap-2">
-								<div className="w-8 h-8 rounded-full bg-primary-500/20 flex items-center justify-center text-primary-400 font-semibold text-sm">
-									{paidByName.charAt(0).toUpperCase()}
-								</div>
-								<span className="text-white font-medium">
-									{paidByName}
-									{isPaidByMe && " (You)"}
-								</span>
-							</div>
-						</div>
+						)}
 					</div>
 
 					{/* Split Details */}
@@ -131,94 +256,183 @@ export function ExpenseDetailModal({
 						<div className="flex items-center justify-between">
 							<h4 className="text-lg font-bold text-white flex items-center gap-2">
 								<Users className="w-5 h-5 text-primary-500" />
-								Split Between {expense.splits.length}{" "}
-								{expense.splits.length === 1 ? "Person" : "People"}
+								{isEditMode ? (
+									<>Split with ({editSelectedMembers.length} selected)</>
+								) : (
+									<>
+										Split Between {expense.splits.length}{" "}
+										{expense.splits.length === 1 ? "Person" : "People"}
+									</>
+								)}
 							</h4>
-							<span className="text-sm text-gray-400">
-								₹{(expense.amount / expense.splits.length).toFixed(2)} each
-							</span>
+							{!isEditMode && (
+								<span className="text-sm text-gray-400">
+									₹
+									{(
+										parseFloat(editAmount || expense.amount.toString()) /
+										(isEditMode
+											? editSelectedMembers.length || 1
+											: expense.splits.length)
+									).toFixed(2)}{" "}
+									each
+								</span>
+							)}
 						</div>
 
-						<div className="space-y-2 max-h-64 overflow-y-auto">
-							{expense.splits.map((split, index) => {
-								const splitUser =
-									typeof split.userId === "object" && split.userId
-										? split.userId
-										: null;
-								const splitUserName = splitUser?.name || "Unknown User";
-								const splitUserId =
-									typeof split.userId === "object" && split.userId
-										? split.userId._id
-										: split.userId;
-								const isMe = splitUserId === currentUserId;
-
-								return (
-									<motion.div
-										key={`${splitUserId}-${index}`}
-										initial={{ opacity: 0, x: -20 }}
-										animate={{ opacity: 1, x: 0 }}
-										transition={{ delay: index * 0.05 }}
-										className={`p-3 rounded-lg border ${
-											isMe
-												? "bg-primary-500/10 border-primary-500/30"
-												: "bg-gray-800/50 border-gray-700/50"
-										}`}
+						{isEditMode ? (
+							<div className="space-y-2 max-h-64 overflow-y-auto bg-gray-800/50 rounded p-2">
+								{groupMembers.map((member) => (
+									<label
+										key={member._id}
+										className="flex items-center gap-2 p-2 rounded hover:bg-gray-700 cursor-pointer transition-colors"
 									>
-										<div className="flex items-center justify-between">
-											<div className="flex items-center gap-3">
-												<div
-													className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${
-														isMe
-															? "bg-primary-500/20 text-primary-400"
-															: "bg-gray-700 text-white"
-													}`}
-												>
-													{splitUserName.charAt(0).toUpperCase()}
+										<input
+											type="checkbox"
+											checked={editSelectedMembers.includes(member._id)}
+											onChange={(e) => {
+												if (e.target.checked) {
+													setEditSelectedMembers([
+														...editSelectedMembers,
+														member._id,
+													]);
+												} else {
+													setEditSelectedMembers(
+														editSelectedMembers.filter(
+															(id) => id !== member._id,
+														),
+													);
+												}
+											}}
+											className="w-4 h-4 accent-primary-500"
+										/>
+										<span className="text-white text-sm">
+											{member.name}
+											{member._id === currentUserId && " (You)"}
+										</span>
+									</label>
+								))}
+							</div>
+						) : (
+							<div className="space-y-2 max-h-64 overflow-y-auto">
+								{expense.splits.map((split, index) => {
+									const splitUser =
+										typeof split.userId === "object" && split.userId
+											? split.userId
+											: null;
+									const splitUserName = splitUser?.name || "Unknown User";
+									const splitUserId =
+										typeof split.userId === "object" && split.userId
+											? split.userId._id
+											: split.userId;
+									const isMe = splitUserId === currentUserId;
+
+									return (
+										<motion.div
+											key={`${splitUserId}-${index}`}
+											initial={{ opacity: 0, x: -20 }}
+											animate={{ opacity: 1, x: 0 }}
+											transition={{ delay: index * 0.05 }}
+											className={`p-3 rounded-lg border ${
+												isMe
+													? "bg-primary-500/10 border-primary-500/30"
+													: "bg-gray-800/50 border-gray-700/50"
+											}`}
+										>
+											<div className="flex items-center justify-between">
+												<div className="flex items-center gap-3">
+													<div
+														className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${
+															isMe
+																? "bg-primary-500/20 text-primary-400"
+																: "bg-gray-700 text-white"
+														}`}
+													>
+														{splitUserName.charAt(0).toUpperCase()}
+													</div>
+													<div>
+														<p className="text-white font-medium">
+															{splitUserName}
+															{isMe && " (You)"}
+														</p>
+														<p className="text-gray-400 text-sm">
+															{split.percentage.toFixed(1)}% of total
+														</p>
+													</div>
 												</div>
-												<div>
-													<p className="text-white font-medium">
-														{splitUserName}
-														{isMe && " (You)"}
-													</p>
-													<p className="text-gray-400 text-sm">
-														{split.percentage.toFixed(1)}% of total
+												<div className="text-right">
+													<p className="text-xl font-bold text-white">
+														₹{split.amount.toFixed(2)}
 													</p>
 												</div>
 											</div>
-											<div className="text-right">
-												<p className="text-xl font-bold text-white">
-													₹{split.amount.toFixed(2)}
-												</p>
-											</div>
-										</div>
-									</motion.div>
-								);
-							})}
-						</div>
+										</motion.div>
+									);
+								})}
+							</div>
+						)}
 					</div>
 
 					{/* Action Buttons */}
 					{isPaidByMe && (
 						<div className="flex gap-2 pt-4 border-t border-gray-700">
-							{onEdit && (
-								<Button
-									onClick={handleEdit}
-									variant="outline"
-									className="flex-1 border-gray-700 hover:bg-gray-800"
-								>
-									<Edit2 className="w-4 h-4 mr-2" />
-									Edit Expense
-								</Button>
-							)}
-							{onDelete && (
-								<Button
-									onClick={handleDelete}
-									variant="outline"
-									className="flex-1 border-red-500/30 hover:bg-red-500/10 text-red-400 hover:text-red-300"
-								>
-									<Trash2 className="w-4 h-4 mr-2" />
-									Delete Expense
-								</Button>
+							{isEditMode ? (
+								<>
+									<Button
+										onClick={handleSaveEdit}
+										className="flex-1 bg-primary-600 hover:bg-primary-700"
+										disabled={updateExpenseMutation.isPending}
+									>
+										{updateExpenseMutation.isPending ? (
+											<>
+												<Loader2 className="w-4 h-4 mr-2 animate-spin" />
+												Saving...
+											</>
+										) : (
+											<>
+												<Save className="w-4 h-4 mr-2" />
+												Save Changes
+											</>
+										)}
+									</Button>
+									<Button
+										onClick={handleCancelEdit}
+										variant="outline"
+										className="flex-1 border-gray-700 hover:bg-gray-800"
+										disabled={updateExpenseMutation.isPending}
+									>
+										<XCircle className="w-4 h-4 mr-2" />
+										Cancel
+									</Button>
+								</>
+							) : (
+								<>
+									<Button
+										onClick={() => setIsEditMode(true)}
+										variant="outline"
+										className="flex-1 border-gray-700 hover:bg-gray-800"
+									>
+										<Edit2 className="w-4 h-4 mr-2" />
+										Edit Expense
+									</Button>
+									<Button
+										onClick={handleDelete}
+										variant="outline"
+										className="flex-1 border-red-500/30 hover:bg-red-500/10 text-red-400 hover:text-red-300"
+										disabled={deleteExpenseMutation.isPending}
+									>
+										{deleteExpenseMutation.isPending ? (
+											<>
+												<Loader2 className="w-4 h-4 mr-2 animate-spin" />
+												Deleting...
+											</>
+										) : (
+											<>
+												<Trash2 className="w-4 h-4 mr-2" />
+												Delete Expense
+											</>
+										)}
+									</Button>
+								</>
 							)}
 						</div>
 					)}

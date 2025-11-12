@@ -118,4 +118,50 @@ router.post('/group/:groupId/settle', async (req: AuthRequest, res: Response, ne
   }
 });
 
+/**
+ * DELETE /api/expenses/:id
+ * Delete an expense
+ */
+router.delete('/:id', async (req: AuthRequest, res: Response, next) => {
+  try {
+    const { id } = req.params;
+
+    const result = await expenseService.deleteExpense(req.userId!, id);
+
+    res.json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * PUT /api/expenses/:id
+ * Update an expense
+ */
+router.put('/:id', async (req: AuthRequest, res: Response, next) => {
+  try {
+    const { id } = req.params;
+    const { description, amount, category, selectedMembers } = req.body;
+
+    const result = await expenseService.updateExpense(
+      req.userId!,
+      id,
+      description,
+      amount,
+      category,
+      selectedMembers
+    );
+
+    res.json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;

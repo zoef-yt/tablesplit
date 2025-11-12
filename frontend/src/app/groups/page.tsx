@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Plus, Users, ArrowRight, Loader2, LogOut } from "lucide-react";
+import { Plus, Users, ArrowRight, Loader2 } from "lucide-react";
 import { useAuthStore } from "@/lib/store/auth";
 import { useGroups, useCreateGroup } from "@/lib/hooks/useGroups";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,7 @@ import {
 	FormLabel,
 	FormMessage,
 } from "@/components/ui/form";
+import { Navigation } from "@/components/Navigation";
 
 const createGroupSchema = z.object({
 	name: z.string().min(1, "Group name is required").max(100),
@@ -38,7 +39,6 @@ export default function GroupsPage() {
 	const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 	const user = useAuthStore((state) => state.user);
 	const isHydrated = useAuthStore((state) => state.isHydrated);
-	const logout = useAuthStore((state) => state.logout);
 	const { data: groups = [], isLoading } = useGroups();
 	const createGroupMutation = useCreateGroup();
 
@@ -85,6 +85,7 @@ export default function GroupsPage() {
 
 	return (
 		<div className="min-h-screen bg-gray-950">
+			<Navigation />
 			<div className="absolute inset-0 bg-gradient-to-br from-primary-900/10 via-transparent to-purple-900/10" />
 
 			<div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -98,13 +99,6 @@ export default function GroupsPage() {
 							Hey {user.name}! Manage your expense groups here
 						</p>
 					</div>
-					<Button
-						variant="ghost"
-						onClick={logout}
-						className="text-gray-400 hover:text-white"
-					>
-						<LogOut className="w-5 h-5" />
-					</Button>
 				</div>
 
 				{/* Groups Grid or Empty State */}
