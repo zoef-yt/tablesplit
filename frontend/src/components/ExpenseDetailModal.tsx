@@ -142,8 +142,8 @@ export function ExpenseDetailModal({
 
 	return (
 		<Dialog open={isOpen} onOpenChange={onClose}>
-			<DialogContent className="bg-gray-900 border-gray-800 max-w-2xl">
-				<DialogHeader>
+			<DialogContent className="bg-gray-900 border-gray-800 max-w-2xl max-h-[90dvh] flex flex-col">
+				<DialogHeader className="flex-shrink-0">
 					<div className="flex items-center justify-between">
 						<DialogTitle className="text-white text-xl flex items-center gap-2">
 							<Receipt className="w-5 h-5 text-primary-500" />
@@ -158,7 +158,7 @@ export function ExpenseDetailModal({
 					</div>
 				</DialogHeader>
 
-				<div className="space-y-6 mt-4">
+				<div className="space-y-6 mt-4 overflow-y-auto flex-1 pr-2">
 					{/* Main Info */}
 					<div className="p-4 rounded-xl bg-gray-800/50 border border-gray-700">
 						{isEditMode ? (
