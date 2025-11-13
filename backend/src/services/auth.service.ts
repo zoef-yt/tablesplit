@@ -6,6 +6,7 @@ import { redisClient } from '../config/redis';
 import { UnauthorizedError, BadRequestError, ConflictError } from '../middleware/errorHandler';
 import { logger } from '../utils/logger';
 import { env } from '../config/env';
+import { emailService } from './email.service';
 
 const JWT_SECRET = env.JWT_SECRET;
 const MAGIC_LINK_EXPIRY = env.MAGIC_LINK_EXPIRY;
@@ -40,6 +41,12 @@ export class AuthService {
     });
 
     logger.info(`New user signed up: ${user._id}`);
+
+    // Send welcome email (don't block signup if it fails)
+    emailService.sendWelcomeEmail(user.email, user.name).catch((error) => {
+      logger.error('Failed to send welcome email:', error);
+      // Don't throw - we don't want to fail signup if email fails
+    });
 
     // Generate JWT token
     const token = this.generateToken(user._id.toString());
@@ -85,6 +92,7 @@ export class AuthService {
 
     // Find or create user
     let user = await User.findOne({ email: normalizedEmail });
+    let isNewUser = false;
 
     if (!user) {
       // Create new user with email as name (can be updated later)
@@ -93,6 +101,7 @@ export class AuthService {
         name: normalizedEmail.split('@')[0],
       });
       logger.info(`New user created: ${user._id}`);
+      isNewUser = true;
     }
 
     // Generate magic link token
@@ -106,6 +115,13 @@ export class AuthService {
     );
 
     logger.info(`Magic link token generated for user: ${user._id}`);
+
+    // Send welcome email for new users (don't block if it fails)
+    if (isNewUser) {
+      emailService.sendWelcomeEmail(user.email, user.name).catch((error) => {
+        logger.error('Failed to send welcome email:', error);
+      });
+    }
 
     return magicToken;
   }

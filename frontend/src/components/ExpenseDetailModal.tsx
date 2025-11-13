@@ -30,6 +30,7 @@ import {
 	useUpdateExpense,
 	useSettlementHistory,
 } from "@/lib/hooks/useExpenses";
+import { emitUserActivity } from "@/lib/socket";
 
 interface ExpenseDetailModalProps {
 	expense: Expense | null;
@@ -70,6 +71,19 @@ export function ExpenseDetailModal({
 			);
 		}
 	}, [expense]);
+
+	// Track user activity when modal opens/closes
+	useEffect(() => {
+		if (isOpen && expense) {
+			if (isEditMode) {
+				emitUserActivity(groupId, `Editing expense: ${expense.description}`);
+			} else {
+				emitUserActivity(groupId, `Viewing expense: ${expense.description}`);
+			}
+		} else if (!isOpen) {
+			emitUserActivity(groupId, null); // Clear activity
+		}
+	}, [isOpen, expense, groupId, isEditMode]);
 
 	if (!expense) return null;
 

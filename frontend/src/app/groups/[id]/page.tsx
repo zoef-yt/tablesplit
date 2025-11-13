@@ -27,6 +27,8 @@ import {
 	useSettlementHistory,
 } from "@/lib/hooks/useExpenses";
 import { useRealtimeUpdates } from "@/lib/hooks/useRealtimeUpdates";
+import { usePresence } from "@/lib/hooks/usePresence";
+import { emitUserActivity } from "@/lib/socket";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useForm } from "react-hook-form";
@@ -89,6 +91,7 @@ export default function GroupDetailPage() {
 	const recordSettlementMutation = useRecordSettlement(groupId);
 
 	useRealtimeUpdates(groupId);
+	const { isUserOnline, getUserActivity } = usePresence(groupId);
 
 	// Handle redirect to login if not authenticated
 	useEffect(() => {
@@ -96,6 +99,16 @@ export default function GroupDetailPage() {
 			router.push("/auth/login");
 		}
 	}, [user, isHydrated, router]);
+
+	// Track activity when adding expense
+	useEffect(() => {
+		if (isExpenseDialogOpen) {
+			emitUserActivity(groupId, "Adding an expense...");
+		} else if (!isExpenseDetailOpen) {
+			// Only clear if expense detail is also closed
+			emitUserActivity(groupId, null);
+		}
+	}, [isExpenseDialogOpen, isExpenseDetailOpen, groupId]);
 
 	// Initialize selected members when group loads
 	useEffect(() => {
@@ -453,22 +466,48 @@ export default function GroupDetailPage() {
 									: member.userId;
 							const userName = memberUser?.name || "Unknown User";
 							const userEmail = memberUser?.email || "No email";
+							const isOnline = isUserOnline(userId);
+							const activity = getUserActivity(userId);
 
 							return (
 								<div
 									key={`${userId}-${index}`}
 									className="flex items-center justify-between p-3 rounded-lg bg-gray-900/50 border border-gray-700/50"
 								>
-									<div className="flex items-center gap-3">
-										<div className="w-10 h-10 rounded-full bg-primary-500/20 flex items-center justify-center text-primary-400 font-semibold">
-											{userName.charAt(0).toUpperCase()}
+									<div className="flex items-center gap-3 flex-1">
+										<div className="relative">
+											<div className="w-10 h-10 rounded-full bg-primary-500/20 flex items-center justify-center text-primary-400 font-semibold">
+												{userName.charAt(0).toUpperCase()}
+											</div>
+											{/* Online/Offline indicator */}
+											<div
+												className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-gray-900 ${
+													isOnline ? "bg-green-500" : "bg-gray-500"
+												}`}
+												title={isOnline ? "Online" : "Offline"}
+											/>
 										</div>
-										<div>
-											<p className="text-white font-medium">{userName}</p>
-											<p className="text-gray-400 text-sm">{userEmail}</p>
+										<div className="flex-1 min-w-0">
+											<div className="flex items-center gap-2">
+												<p className="text-white font-medium">{userName}</p>
+												{isOnline && (
+													<span className="text-xs text-green-400 font-medium">
+														●
+													</span>
+												)}
+											</div>
+											{activity ? (
+												<p className="text-primary-400 text-xs italic truncate">
+													{activity}
+												</p>
+											) : (
+												<p className="text-gray-400 text-sm truncate">
+													{userEmail}
+												</p>
+											)}
 										</div>
 									</div>
-									<div className="text-right">
+									<div className="text-right flex-shrink-0">
 										<p className="text-gray-500 text-xs">
 											Seat {member.seatPosition + 1}
 										</p>

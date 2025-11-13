@@ -60,3 +60,24 @@ export const leaveGroup = (groupId: string): void => {
 		socket.emit("group:leave", groupId);
 	}
 };
+
+export const emitUserActivity = (groupId: string, activity: string | null): void => {
+	const socket = getSocket();
+	if (socket.connected) {
+		socket.emit("user:activity", { groupId, activity });
+	}
+};
+
+export const requestOnlineUsers = (groupId: string): void => {
+	const socket = getSocket();
+	if (socket.connected) {
+		socket.emit("users:get-online", { groupId });
+	}
+};
+
+export const requestUserActivities = (groupId: string): void => {
+	const socket = getSocket();
+	if (socket.connected) {
+		socket.emit("users:get-activities", { groupId });
+	}
+};
