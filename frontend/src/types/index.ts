@@ -160,3 +160,54 @@ export interface PendingAction {
 	timestamp: number;
 	retries: number;
 }
+
+// Analytics Types
+export interface CategoryBreakdown {
+	category: string;
+	total: number;
+	count: number;
+}
+
+export interface TopPayer {
+	userId: string;
+	userName: string;
+	totalPaid: number;
+	expenseCount: number;
+}
+
+export interface TopExpense {
+	description: string;
+	amount: number;
+	category: string;
+	date: Date;
+	paidBy: string;
+}
+
+export interface MonthlyTrend {
+	month: string;
+	total: number;
+	count: number;
+}
+
+export interface UserStats {
+	totalPaid: number;
+	totalOwed: number;
+	shareOfTotal: number;
+	expenseCount: number;
+}
+
+export interface GroupTotals {
+	totalExpenses: number;
+	expenseCount: number;
+	averageExpense: number;
+	memberCount: number;
+}
+
+export interface GroupAnalytics {
+	categoryBreakdown: CategoryBreakdown[];
+	topPayers: TopPayer[];
+	topExpenses: TopExpense[];
+	monthlyTrends: MonthlyTrend[];
+	userStats: UserStats;
+	groupTotals: GroupTotals;
+}

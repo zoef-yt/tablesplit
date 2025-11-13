@@ -215,4 +215,23 @@ router.put('/:id', async (req: AuthRequest, res: Response, next) => {
   }
 });
 
+/**
+ * GET /api/expenses/group/:groupId/analytics
+ * Get analytics for a group
+ */
+router.get('/group/:groupId/analytics', async (req: AuthRequest, res: Response, next) => {
+  try {
+    const { groupId } = req.params;
+
+    const analytics = await expenseService.getGroupAnalytics(req.userId!, groupId);
+
+    res.json({
+      success: true,
+      data: analytics,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;

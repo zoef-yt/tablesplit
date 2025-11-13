@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiHelpers } from "@/lib/api";
-import { Expense, Balance, Settlement } from "@/types";
+import { Expense, Balance, Settlement, GroupAnalytics } from "@/types";
 import { connectSocket } from "@/lib/socket";
 import { vibrate } from "@/lib/utils";
 
@@ -174,5 +174,18 @@ export function useUpdateExpense(groupId: string) {
 
 			vibrate(50);
 		},
+	});
+}
+
+export function useGroupAnalytics(groupId: string) {
+	return useQuery({
+		queryKey: ["analytics", groupId],
+		queryFn: async () => {
+			const response = await apiHelpers.get<GroupAnalytics>(
+				`/expenses/group/${groupId}/analytics`,
+			);
+			return response.data;
+		},
+		enabled: !!groupId,
 	});
 }

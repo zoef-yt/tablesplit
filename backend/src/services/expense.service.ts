@@ -473,6 +473,173 @@ export class ExpenseService {
 
     return transactions;
   }
+
+  /**
+   * Get analytics for a group
+   */
+  async getGroupAnalytics(userId: string, groupId: string): Promise<{
+    categoryBreakdown: Array<{ category: string; total: number; count: number }>;
+    topPayers: Array<{ userId: string; userName: string; totalPaid: number; expenseCount: number }>;
+    topExpenses: Array<{ description: string; amount: number; category: string; date: Date; paidBy: string }>;
+    monthlyTrends: Array<{ month: string; total: number; count: number }>;
+    userStats: {
+      totalPaid: number;
+      totalOwed: number;
+      shareOfTotal: number;
+      expenseCount: number;
+    };
+    groupTotals: {
+      totalExpenses: number;
+      expenseCount: number;
+      averageExpense: number;
+      memberCount: number;
+    };
+  }> {
+    const group = await Group.findById(groupId);
+
+    if (!group) {
+      throw new NotFoundError('Group not found');
+    }
+
+    // Verify user is member
+    const isMember = group.members.some((m) => m.userId.toString() === userId);
+    if (!isMember) {
+      throw new ForbiddenError('You are not a member of this group');
+    }
+
+    // Get all expenses for the group
+    const expenses = await Expense.find({ groupId })
+      .populate('paidBy', 'name email')
+      .sort({ date: -1 });
+
+    // Calculate category breakdown
+    const categoryMap = new Map<string, { total: number; count: number }>();
+    expenses.forEach((expense) => {
+      const category = expense.category || 'Uncategorized';
+      const existing = categoryMap.get(category) || { total: 0, count: 0 };
+      categoryMap.set(category, {
+        total: existing.total + expense.amount,
+        count: existing.count + 1,
+      });
+    });
+    const categoryBreakdown = Array.from(categoryMap.entries()).map(([category, data]) => ({
+      category,
+      total: data.total,
+      count: data.count,
+    }));
+
+    // Calculate top payers
+    const payerMap = new Map<string, { userName: string; totalPaid: number; expenseCount: number }>();
+    expenses.forEach((expense) => {
+      const paidBy = typeof expense.paidBy === 'object' && expense.paidBy && 'name' in expense.paidBy ? expense.paidBy : null;
+      const payerId = paidBy?._id?.toString() || (typeof expense.paidBy === 'object' && expense.paidBy ? expense.paidBy.toString() : 'unknown');
+      const payerName: string = paidBy && 'name' in paidBy ? String(paidBy.name) : 'Unknown';
+
+      const existing = payerMap.get(payerId) || { userName: payerName, totalPaid: 0, expenseCount: 0 };
+      payerMap.set(payerId, {
+        userName: payerName,
+        totalPaid: existing.totalPaid + expense.amount,
+        expenseCount: existing.expenseCount + 1,
+      });
+    });
+    const topPayers = Array.from(payerMap.entries())
+      .map(([userId, data]) => ({
+        userId,
+        userName: data.userName,
+        totalPaid: data.totalPaid,
+        expenseCount: data.expenseCount,
+      }))
+      .sort((a, b) => b.totalPaid - a.totalPaid)
+      .slice(0, 5);
+
+    // Get top expenses
+    const topExpenses = expenses
+      .slice(0, 10)
+      .map((expense) => {
+        const paidBy = typeof expense.paidBy === 'object' && expense.paidBy && 'name' in expense.paidBy ? expense.paidBy : null;
+        const payerName: string = paidBy && 'name' in paidBy ? String(paidBy.name) : 'Unknown';
+        return {
+          description: expense.description,
+          amount: expense.amount,
+          category: expense.category || 'Uncategorized',
+          date: expense.date,
+          paidBy: payerName,
+        };
+      });
+
+    // Calculate monthly trends (last 6 months)
+    const monthlyMap = new Map<string, { total: number; count: number }>();
+    const now = new Date();
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(now.getMonth() - 6);
+
+    expenses
+      .filter((expense) => expense.date >= sixMonthsAgo)
+      .forEach((expense) => {
+        const monthKey = `${expense.date.getFullYear()}-${String(expense.date.getMonth() + 1).padStart(2, '0')}`;
+        const existing = monthlyMap.get(monthKey) || { total: 0, count: 0 };
+        monthlyMap.set(monthKey, {
+          total: existing.total + expense.amount,
+          count: existing.count + 1,
+        });
+      });
+
+    const monthlyTrends = Array.from(monthlyMap.entries())
+      .map(([month, data]) => ({
+        month,
+        total: data.total,
+        count: data.count,
+      }))
+      .sort((a, b) => a.month.localeCompare(b.month));
+
+    // Calculate user stats
+    const userPaidExpenses = expenses.filter((expense) => {
+      const paidBy = typeof expense.paidBy === 'object' && expense.paidBy && 'name' in expense.paidBy ? expense.paidBy : null;
+      const payerId = paidBy?._id?.toString() || (typeof expense.paidBy === 'object' && expense.paidBy ? expense.paidBy.toString() : '');
+      return payerId === userId;
+    });
+    const totalPaid = userPaidExpenses.reduce((sum, expense) => sum + expense.amount, 0);
+
+    // Calculate how much user owes (from their splits)
+    let totalOwed = 0;
+    expenses.forEach((expense) => {
+      const userSplit = expense.splits.find((split) => {
+        if (!split.userId) return false;
+        const splitUserId = typeof split.userId === 'object' && split.userId && '_id' in split.userId
+          ? split.userId._id?.toString()
+          : String(split.userId);
+        return splitUserId === userId;
+      });
+      if (userSplit) {
+        totalOwed += userSplit.amount;
+      }
+    });
+
+    const groupTotal = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+    const shareOfTotal = groupTotal > 0 ? (totalPaid / groupTotal) * 100 : 0;
+
+    // Group totals
+    const groupTotals = {
+      totalExpenses: groupTotal,
+      expenseCount: expenses.length,
+      averageExpense: expenses.length > 0 ? groupTotal / expenses.length : 0,
+      memberCount: group.members.length,
+    };
+
+    return {
+      categoryBreakdown,
+      topPayers,
+      topExpenses,
+      monthlyTrends,
+      userStats: {
+        totalPaid,
+        totalOwed,
+        shareOfTotal,
+        expenseCount: userPaidExpenses.length,
+      },
+      groupTotals,
+    };
+  }
 }
 
 export const expenseService = new ExpenseService();
