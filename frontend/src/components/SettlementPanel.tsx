@@ -49,6 +49,8 @@ export function SettlementPanel({
 		null
 	);
 	const [paymentNotes, setPaymentNotes] = useState("");
+	const [customAmount, setCustomAmount] = useState("");
+	const [useCustomAmount, setUseCustomAmount] = useState(false);
 
 	const mySettlements = settlements.filter(
 		(s) => s.from === currentUserId || s.to === currentUserId,
@@ -83,6 +85,8 @@ export function SettlementPanel({
 
 	const handleManualPayment = (settlement: Settlement) => {
 		setSelectedSettlement(settlement);
+		setCustomAmount(settlement.amount.toString());
+		setUseCustomAmount(false);
 		setShowPaymentMethodSheet(true);
 	};
 
@@ -90,16 +94,28 @@ export function SettlementPanel({
 		paymentMethod: "UPI" | "Cash" | "Bank Transfer" | "Other"
 	) => {
 		if (selectedSettlement && onMarkAsPaid) {
+			// Use custom amount if provided, otherwise use suggested amount
+			const amountToSettle = useCustomAmount
+				? parseFloat(customAmount) || selectedSettlement.amount
+				: selectedSettlement.amount;
+
+			if (amountToSettle <= 0) {
+				alert("Please enter a valid amount");
+				return;
+			}
+
 			onMarkAsPaid(
 				selectedSettlement.from,
 				selectedSettlement.to,
-				selectedSettlement.amount,
+				amountToSettle,
 				paymentMethod,
 				paymentNotes || undefined
 			);
 			setShowPaymentMethodSheet(false);
 			setSelectedSettlement(null);
 			setPaymentNotes("");
+			setCustomAmount("");
+			setUseCustomAmount(false);
 		}
 	};
 
@@ -258,15 +274,55 @@ export function SettlementPanel({
 					setShowPaymentMethodSheet(false);
 					setSelectedSettlement(null);
 					setPaymentNotes("");
+					setCustomAmount("");
+					setUseCustomAmount(false);
 				}}
-				title="How did you pay?"
+				title="Settle Payment"
 				subtitle={
 					selectedSettlement
-						? `₹${selectedSettlement.amount.toFixed(2)} to ${users[selectedSettlement.to]?.name}`
+						? `To ${users[selectedSettlement.to]?.name}`
 						: ""
 				}
 			>
 				<div className="space-y-4 pb-6">
+					{/* Amount Selection */}
+					<div className="space-y-3">
+						<div className="flex items-center justify-between">
+							<label className="text-sm font-medium text-gray-300">
+								Amount to Settle
+							</label>
+							<button
+								onClick={() => setUseCustomAmount(!useCustomAmount)}
+								className="text-xs text-primary-400 hover:text-primary-300"
+							>
+								{useCustomAmount ? "Use suggested" : "Enter custom amount"}
+							</button>
+						</div>
+
+						{useCustomAmount ? (
+							<div className="relative">
+								<span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+									₹
+								</span>
+								<Input
+									type="number"
+									step="0.01"
+									value={customAmount}
+									onChange={(e) => setCustomAmount(e.target.value)}
+									placeholder="Enter amount"
+									className="bg-gray-800 border-gray-700 text-white pl-8 text-lg font-semibold"
+								/>
+							</div>
+						) : (
+							<div className="p-3 rounded-lg bg-primary-500/10 border border-primary-500/30 text-center">
+								<p className="text-2xl font-bold text-primary-400">
+									₹{selectedSettlement?.amount.toFixed(2)}
+								</p>
+								<p className="text-xs text-gray-400 mt-1">Suggested amount</p>
+							</div>
+						)}
+					</div>
+
 					<p className="text-gray-400 text-sm">
 						Select the payment method you used to settle this amount.
 					</p>
