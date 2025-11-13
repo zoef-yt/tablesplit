@@ -119,7 +119,8 @@ export class ExpenseService {
 
     return this.simplifyDebts(
       balances.map((b) => ({
-        userId: b.userId.toString(),
+        // Extract _id from populated userId or use string directly
+        userId: typeof b.userId === 'object' && b.userId._id ? b.userId._id.toString() : b.userId.toString(),
         balance: b.balance,
       }))
     );

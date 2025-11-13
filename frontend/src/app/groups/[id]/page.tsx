@@ -223,11 +223,6 @@ export default function GroupDetailPage() {
 		}
 	}
 
-	// Debug logging
-	console.log("Group members:", group?.members);
-	console.log("Users lookup:", usersLookup);
-	console.log("Settlements:", settlements);
-
 	const handleMarkAsPaid = async (
 		from: string,
 		to: string,
