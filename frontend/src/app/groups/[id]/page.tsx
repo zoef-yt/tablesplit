@@ -13,6 +13,7 @@ import {
 	UserPlus,
 	Copy,
 	Check,
+	TrendingUp,
 } from "lucide-react";
 import { useAuthStore } from "@/lib/store/auth";
 import { useGroup, useInviteToGroup } from "@/lib/hooks/useGroups";
@@ -274,6 +275,13 @@ export default function GroupDetailPage() {
 						</div>
 					</div>
 					<div className="flex items-center gap-2">
+						<button
+							onClick={() => router.push(`/groups/${groupId}/analytics`)}
+							className="p-2 hover:bg-gray-800 rounded-full transition-colors text-green-500"
+							title="View analytics"
+						>
+							<TrendingUp className="w-6 h-6" />
+						</button>
 						<GroupSettings group={group} currentUserId={user._id} />
 						<Dialog
 							open={isInviteDialogOpen}
