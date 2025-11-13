@@ -99,19 +99,40 @@ router.get('/group/:groupId/settlement', async (req: AuthRequest, res: Response,
 router.post('/group/:groupId/settle', async (req: AuthRequest, res: Response, next) => {
   try {
     const { groupId } = req.params;
-    const { from, to, amount } = req.body;
+    const { from, to, amount, paymentMethod, notes } = req.body;
 
-    const updatedBalances = await expenseService.recordSettlement(
+    const result = await expenseService.recordSettlement(
       req.userId!,
       groupId,
       from,
       to,
-      amount
+      amount,
+      paymentMethod,
+      notes
     );
 
     res.json({
       success: true,
-      data: updatedBalances,
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * GET /api/expenses/group/:groupId/settlement-history
+ * Get settlement history for a group
+ */
+router.get('/group/:groupId/settlement-history', async (req: AuthRequest, res: Response, next) => {
+  try {
+    const { groupId } = req.params;
+
+    const history = await expenseService.getSettlementHistory(req.userId!, groupId);
+
+    res.json({
+      success: true,
+      data: history,
     });
   } catch (error) {
     next(error);

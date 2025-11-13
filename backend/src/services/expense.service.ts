@@ -1,11 +1,12 @@
 import { Expense, IExpense } from '../models/Expense';
 import { Balance, IBalance } from '../models/Balance';
+import { Settlement as SettlementModel, ISettlement } from '../models/Settlement';
 import { Group } from '../models/Group';
 import { NotFoundError, ForbiddenError } from '../middleware/errorHandler';
 import { logger } from '../utils/logger';
 import { Types } from 'mongoose';
 
-interface Settlement {
+interface CalculatedSettlement {
   from: string;
   to: string;
   amount: number;
@@ -113,7 +114,7 @@ export class ExpenseService {
   /**
    * Calculate settlement (debt simplification)
    */
-  async calculateSettlement(userId: string, groupId: string): Promise<Settlement[]> {
+  async calculateSettlement(userId: string, groupId: string): Promise<CalculatedSettlement[]> {
     const balances = await this.getGroupBalances(userId, groupId);
 
     return this.simplifyDebts(
@@ -132,8 +133,10 @@ export class ExpenseService {
     groupId: string,
     fromUserId: string,
     toUserId: string,
-    amount: number
-  ): Promise<IBalance[]> {
+    amount: number,
+    paymentMethod?: 'UPI' | 'Cash' | 'Bank Transfer' | 'Other',
+    notes?: string
+  ): Promise<{ updatedBalances: IBalance[]; settlement: ISettlement }> {
     const group = await Group.findById(groupId);
 
     if (!group) {
@@ -145,6 +148,21 @@ export class ExpenseService {
     if (!isMember) {
       throw new ForbiddenError('You are not a member of this group');
     }
+
+    // Create settlement record
+    const settlement = await SettlementModel.create({
+      groupId,
+      fromUserId,
+      toUserId,
+      amount,
+      paymentMethod,
+      notes,
+      settledAt: new Date(),
+    });
+
+    // Populate user details
+    await settlement.populate('fromUserId', 'name email avatar');
+    await settlement.populate('toUserId', 'name email avatar');
 
     // Update balances
     // Decrease balance for payer (from)
@@ -161,11 +179,36 @@ export class ExpenseService {
       { upsert: true }
     );
 
-    logger.info(`Settlement recorded: ${fromUserId} paid ${toUserId} ${amount} in group ${groupId}`);
+    logger.info(`Settlement recorded: ${fromUserId} paid ${toUserId} ${amount} in group ${groupId} via ${paymentMethod || 'unknown method'}`);
 
-    // Return updated balances
+    // Return updated balances and settlement
     const updatedBalances = await this.getGroupBalances(userId, groupId);
-    return updatedBalances;
+    return { updatedBalances, settlement };
+  }
+
+  /**
+   * Get settlement history for a group
+   */
+  async getSettlementHistory(userId: string, groupId: string): Promise<ISettlement[]> {
+    const group = await Group.findById(groupId);
+
+    if (!group) {
+      throw new NotFoundError('Group not found');
+    }
+
+    // Verify user is member
+    const isMember = group.members.some((m) => m.userId.toString() === userId);
+    if (!isMember) {
+      throw new ForbiddenError('You are not a member of this group');
+    }
+
+    // Get all settlements for this group, sorted by most recent first
+    const settlements = await SettlementModel.find({ groupId })
+      .populate('fromUserId', 'name email avatar')
+      .populate('toUserId', 'name email avatar')
+      .sort({ settledAt: -1 });
+
+    return settlements;
   }
 
   /**
@@ -396,10 +439,10 @@ export class ExpenseService {
    */
   private simplifyDebts(
     balances: Array<{ userId: string; balance: number }>
-  ): Settlement[] {
+  ): CalculatedSettlement[] {
     const creditors = balances.filter((b) => b.balance > 0.01);
     const debtors = balances.filter((b) => b.balance < -0.01);
-    const transactions: Settlement[] = [];
+    const transactions: CalculatedSettlement[] = [];
 
     // Sort by amount (descending)
     creditors.sort((a, b) => b.balance - a.balance);
