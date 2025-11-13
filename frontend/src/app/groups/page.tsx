@@ -8,6 +8,7 @@ import { useAuthStore } from "@/lib/store/auth";
 import { useGroups, useCreateGroup } from "@/lib/hooks/useGroups";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { GroupSkeleton } from "@/components/ui/skeleton";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -27,6 +28,7 @@ import {
 	FormMessage,
 } from "@/components/ui/form";
 import { Navigation } from "@/components/Navigation";
+import { staggerChildren, listItem, cardHover } from "@/lib/animations";
 
 const createGroupSchema = z.object({
 	name: z.string().min(1, "Group name is required").max(100),
@@ -77,8 +79,21 @@ export default function GroupsPage() {
 
 	if (isLoading) {
 		return (
-			<div className="min-h-screen bg-gray-950 flex items-center justify-center">
-				<Loader2 className="w-12 h-12 text-primary-500 animate-spin" />
+			<div className="min-h-screen bg-gray-950">
+				<Navigation />
+				<div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+					<div className="mb-8">
+						<h1 className="text-3xl sm:text-4xl font-bold text-white mb-2">
+							Your Groups
+						</h1>
+						<p className="text-gray-400">Loading...</p>
+					</div>
+					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+						{[1, 2, 3].map((i) => (
+							<GroupSkeleton key={i} />
+						))}
+					</div>
+				</div>
 			</div>
 		);
 	}
@@ -178,15 +193,19 @@ export default function GroupsPage() {
 					</motion.div>
 				) : (
 					<>
-						<div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-							{groups.map((group, index) => (
+						<motion.div
+							variants={staggerChildren}
+							initial="hidden"
+							animate="visible"
+							className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6"
+						>
+							{groups.map((group) => (
 								<motion.div
 									key={group._id}
-									initial={{ opacity: 0, y: 20 }}
-									animate={{ opacity: 1, y: 0 }}
-									transition={{ delay: index * 0.05, duration: 0.3 }}
+									variants={listItem}
+									{...cardHover}
 									onClick={() => router.push(`/groups/${group._id}`)}
-									className="bg-gray-900/50 backdrop-blur-xl border border-gray-800 rounded-xl p-6 hover:border-primary-500/50 transition-all cursor-pointer group"
+									className="bg-gray-900/50 backdrop-blur-xl border border-gray-800 rounded-2xl p-6 hover:border-primary-500/50 hover:shadow-xl hover:shadow-primary-500/10 transition-all cursor-pointer group"
 								>
 									<div className="flex items-start justify-between mb-4">
 										<div className="flex-1">
@@ -214,10 +233,9 @@ export default function GroupsPage() {
 							>
 								<DialogTrigger asChild>
 									<motion.div
-										initial={{ opacity: 0, y: 20 }}
-										animate={{ opacity: 1, y: 0 }}
-										transition={{ delay: groups.length * 0.05, duration: 0.3 }}
-										className="bg-gray-900/30 backdrop-blur-xl border-2 border-dashed border-gray-700 rounded-xl p-6 hover:border-primary-500/50 transition-all cursor-pointer flex flex-col items-center justify-center min-h-[160px] group"
+										variants={listItem}
+										{...cardHover}
+										className="bg-gray-900/30 backdrop-blur-xl border-2 border-dashed border-gray-700 rounded-2xl p-6 hover:border-primary-500/50 hover:shadow-lg transition-all cursor-pointer flex flex-col items-center justify-center min-h-[160px] group"
 									>
 										<div className="w-12 h-12 bg-primary-500/10 rounded-full flex items-center justify-center mb-3 group-hover:bg-primary-500/20 transition-colors">
 											<Plus className="w-6 h-6 text-primary-500" />
@@ -278,7 +296,7 @@ export default function GroupsPage() {
 									</Form>
 								</DialogContent>
 							</Dialog>
-						</div>
+						</motion.div>
 					</>
 				)}
 			</div>
