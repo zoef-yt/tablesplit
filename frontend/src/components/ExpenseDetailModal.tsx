@@ -372,6 +372,123 @@ export function ExpenseDetailModal({
 						)}
 					</div>
 
+					{/* WHO OWES WHAT - CLEAR BREAKDOWN */}
+					{!isEditMode && (
+						<div className="p-4 rounded-xl bg-gradient-to-r from-primary-500/10 to-purple-500/10 border-2 border-primary-500/30">
+							<h4 className="text-lg font-bold text-white mb-3 flex items-center gap-2">
+								<IndianRupee className="w-5 h-5 text-primary-400" />
+								Who Owes What
+							</h4>
+							<div className="space-y-3">
+								{/* Who Paid */}
+								<div className="p-3 rounded-lg bg-gray-900/50">
+									<p className="text-sm text-gray-400 mb-1">Paid by:</p>
+									<p className="text-lg font-bold text-green-400">
+										{paidByUser?.name || "Unknown"}{" "}
+										{paidByUser?._id === currentUserId && "(You)"} paid ₹
+										{expense.amount.toFixed(2)}
+									</p>
+								</div>
+
+								{/* Who Owes */}
+								<div className="space-y-2">
+									<p className="text-sm text-gray-400">Breakdown:</p>
+									{expense.splits.map((split, index) => {
+										const splitUser =
+											typeof split.userId === "object" && split.userId
+												? split.userId
+												: null;
+										const splitUserId =
+											typeof split.userId === "object" && split.userId
+												? split.userId._id
+												: split.userId;
+										const splitUserName = splitUser?.name || "Unknown User";
+										const isMe = splitUserId === currentUserId;
+										const isPayer = paidByUser?._id === splitUserId;
+
+										// Calculate what this person owes
+										const owedAmount = isPayer
+											? expense.amount - split.amount // Payer gets back from others
+											: split.amount; // Others owe their share
+
+										if (isPayer && expense.splits.length === 1) {
+											// Only payer in the split
+											return (
+												<div
+													key={index}
+													className="p-3 rounded-lg bg-gray-800/30 border border-gray-700/50"
+												>
+													<p className="text-white">
+														<span className="font-bold text-primary-400">
+															{splitUserName}
+															{isMe && " (You)"}
+														</span>{" "}
+														paid for themselves
+													</p>
+												</div>
+											);
+										} else if (isPayer) {
+											// Payer gets money back
+											return (
+												<div
+													key={index}
+													className="p-3 rounded-lg bg-green-500/10 border border-green-500/30"
+												>
+													<p className="text-white">
+														<span className="font-bold text-green-400">
+															{splitUserName}
+															{isMe && " (You)"}
+														</span>{" "}
+														should get back{" "}
+														<span className="font-bold text-green-400">
+															₹{owedAmount.toFixed(2)}
+														</span>
+													</p>
+												</div>
+											);
+										} else {
+											// Others owe money
+											return (
+												<div
+													key={index}
+													className={`p-3 rounded-lg ${
+														isMe
+															? "bg-red-500/10 border border-red-500/30"
+															: "bg-gray-800/30 border border-gray-700/50"
+													}`}
+												>
+													<p className="text-white">
+														<span
+															className={`font-bold ${
+																isMe ? "text-red-400" : "text-gray-300"
+															}`}
+														>
+															{splitUserName}
+															{isMe && " (You)"}
+														</span>{" "}
+														owes{" "}
+														<span
+															className={`font-bold ${
+																isMe ? "text-red-400" : "text-gray-300"
+															}`}
+														>
+															₹{owedAmount.toFixed(2)}
+														</span>{" "}
+														to{" "}
+														<span className="font-bold text-primary-400">
+															{paidByUser?.name}
+															{paidByUser?._id === currentUserId && " (You)"}
+														</span>
+													</p>
+												</div>
+											);
+										}
+									})}
+								</div>
+							</div>
+						</div>
+					)}
+
 					{/* Action Buttons */}
 					{isPaidByMe && (
 						<div className="flex gap-2 pt-4 border-t border-gray-700">

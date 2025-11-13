@@ -372,8 +372,8 @@ export default function GroupDetailPage() {
 									: "bg-gray-800/50 border-gray-700"
 						}`}
 					>
-						<p className="text-gray-300 text-sm mb-2">Your balance</p>
-						<div className="flex items-center gap-2">
+						<p className="text-gray-300 text-sm mb-2">Your Balance in This Group</p>
+						<div className="flex items-center gap-2 mb-3">
 							<IndianRupee className="w-6 h-6 text-white" />
 							<p
 								className={`text-3xl font-bold ${
@@ -387,13 +387,36 @@ export default function GroupDetailPage() {
 								{formatCurrency(Math.abs(myBalance.balance))}
 							</p>
 						</div>
-						<p className="text-gray-400 text-sm mt-1">
-							{myBalance.balance > 0
-								? "You are owed"
-								: myBalance.balance < 0
-									? "You owe"
-									: "All settled up!"}
-						</p>
+						<div className="space-y-1">
+							{myBalance.balance > 0 ? (
+								<>
+									<p className="text-green-400 font-semibold">
+										✓ Others owe you money
+									</p>
+									<p className="text-gray-400 text-sm">
+										Check &ldquo;Settlements&rdquo; below to see who owes you and how much
+									</p>
+								</>
+							) : myBalance.balance < 0 ? (
+								<>
+									<p className="text-red-400 font-semibold">
+										! You owe money to others
+									</p>
+									<p className="text-gray-400 text-sm">
+										Check &ldquo;Settlements&rdquo; below to see who to pay and how much
+									</p>
+								</>
+							) : (
+								<>
+									<p className="text-gray-300 font-semibold">
+										✓ All settled up!
+									</p>
+									<p className="text-gray-400 text-sm">
+										You don&apos;t owe anyone and nobody owes you
+									</p>
+								</>
+							)}
+						</div>
 					</motion.div>
 				)}
 
