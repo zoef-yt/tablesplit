@@ -122,7 +122,7 @@ export function useSettlementHistory(groupId: string) {
 	return useQuery({
 		queryKey: ["settlement-history", groupId],
 		queryFn: async () => {
-			const response = await apiHelpers.get(
+			const response = await apiHelpers.get<any[]>(
 				`/expenses/group/${groupId}/settlement-history`,
 			);
 			return response.data || [];

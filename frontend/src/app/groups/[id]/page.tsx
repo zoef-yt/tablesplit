@@ -22,6 +22,7 @@ import {
 	useCreateExpense,
 	useSettlements,
 	useRecordSettlement,
+	useSettlementHistory,
 } from "@/lib/hooks/useExpenses";
 import { useRealtimeUpdates } from "@/lib/hooks/useRealtimeUpdates";
 import { Button } from "@/components/ui/button";
@@ -46,6 +47,7 @@ import {
 } from "@/components/ui/form";
 import { formatCurrency } from "@/lib/utils";
 import { SettlementPanel } from "@/components/SettlementPanel";
+import { SettlementHistory } from "@/components/SettlementHistory";
 import { ExpenseDetailModal } from "@/components/ExpenseDetailModal";
 import { Navigation } from "@/components/Navigation";
 import { GroupSettings } from "@/components/GroupSettings";
@@ -71,6 +73,7 @@ export default function GroupDetailPage() {
 	const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
 	const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
 	const [isExpenseDetailOpen, setIsExpenseDetailOpen] = useState(false);
+	const [showSettlementHistory, setShowSettlementHistory] = useState(false);
 
 	const groupId = params.id as string;
 
@@ -78,6 +81,7 @@ export default function GroupDetailPage() {
 	const { data: balances = [] } = useBalances(groupId);
 	const { data: expenses = [] } = useExpenses(groupId);
 	const { data: settlements = [] } = useSettlements(groupId);
+	const { data: settlementHistory = [] } = useSettlementHistory(groupId);
 	const createExpenseMutation = useCreateExpense(groupId);
 	const inviteMutation = useInviteToGroup(groupId);
 	const recordSettlementMutation = useRecordSettlement(groupId);
@@ -447,21 +451,56 @@ export default function GroupDetailPage() {
 				</motion.div>
 
 				{/* Settlements Section */}
-				{settlements.length > 0 && (
+				{(settlements.length > 0 || settlementHistory.length > 0) && (
 					<motion.div
 						initial={{ opacity: 0, y: 20 }}
 						animate={{ opacity: 1, y: 0 }}
 						transition={{ delay: 0.2 }}
-						className="mb-8 p-6 rounded-xl bg-gray-800/50 border border-gray-700"
+						className="mb-8 rounded-xl bg-gray-800/50 border border-gray-700 overflow-hidden"
 					>
-						<SettlementPanel
-							groupId={groupId}
-							groupName={group.name}
-							settlements={settlements}
-							users={usersLookup}
-							currentUserId={user._id}
-							onMarkAsPaid={handleMarkAsPaid}
-						/>
+						{/* Tab Header */}
+						<div className="flex border-b border-gray-700">
+							<button
+								onClick={() => setShowSettlementHistory(false)}
+								className={`flex-1 px-6 py-4 text-sm font-semibold transition-colors ${
+									!showSettlementHistory
+										? "text-white bg-gray-800/50 border-b-2 border-primary-500"
+										: "text-gray-400 hover:text-white hover:bg-gray-800/30"
+								}`}
+							>
+								Pending ({settlements.length})
+							</button>
+							<button
+								onClick={() => setShowSettlementHistory(true)}
+								className={`flex-1 px-6 py-4 text-sm font-semibold transition-colors ${
+									showSettlementHistory
+										? "text-white bg-gray-800/50 border-b-2 border-primary-500"
+										: "text-gray-400 hover:text-white hover:bg-gray-800/30"
+								}`}
+							>
+								History ({settlementHistory.length})
+							</button>
+						</div>
+
+						{/* Content */}
+						<div className="p-6">
+							{!showSettlementHistory ? (
+								<SettlementPanel
+									groupId={groupId}
+									groupName={group.name}
+									settlements={settlements}
+									users={usersLookup}
+									currentUserId={user._id}
+									onMarkAsPaid={handleMarkAsPaid}
+								/>
+							) : (
+								<SettlementHistory
+									settlements={settlementHistory}
+									users={usersLookup}
+									currentUserId={user._id}
+								/>
+							)}
+						</div>
 					</motion.div>
 				)}
 
