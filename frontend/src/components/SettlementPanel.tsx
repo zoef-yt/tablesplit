@@ -276,10 +276,17 @@ export function SettlementPanel({
 						<Button
 							onClick={() => handleConfirmPayment("UPI")}
 							variant="outline"
-							className="h-20 flex-col gap-2 border-gray-700 hover:border-primary-500 hover:bg-primary-500/10"
+							disabled={
+								!selectedSettlement ||
+								!users[selectedSettlement.to]?.upiId
+							}
+							className="h-20 flex-col gap-2 border-gray-700 hover:border-primary-500 hover:bg-primary-500/10 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-gray-700 disabled:hover:bg-transparent"
 						>
 							<Smartphone className="w-6 h-6 text-primary-400" />
 							<span>UPI</span>
+							{selectedSettlement && !users[selectedSettlement.to]?.upiId && (
+								<span className="text-xs text-red-400">Not available</span>
+							)}
 						</Button>
 
 						<Button

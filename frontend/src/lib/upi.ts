@@ -107,23 +107,7 @@ export function generateTransactionRef(prefix = "TS"): string {
  * @param fallbackUrl - Optional fallback URL if UPI apps not available
  */
 export function openUpiPayment(upiLink: string, fallbackUrl?: string): void {
-	const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-
-	if (isMobile) {
-		// On mobile, try to open in new tab (will redirect to UPI app)
-		const popup = window.open(upiLink, "_blank");
-
-		// Fallback if popup blocked or UPI app not available
-		setTimeout(() => {
-			if (popup && !popup.closed) {
-				popup.close();
-				if (fallbackUrl) {
-					window.location.href = fallbackUrl;
-				}
-			}
-		}, 2000);
-	} else {
-		// On desktop, show QR code or copy link
-		window.location.href = upiLink;
-	}
+	// Directly navigate to UPI link - this will open the UPI app on mobile
+	// or prompt to install one if not available
+	window.location.href = upiLink;
 }

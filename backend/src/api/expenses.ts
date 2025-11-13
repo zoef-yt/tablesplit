@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import { expenseService } from '../services/expense.service';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
 import { validate, schemas } from '../middleware/validation';
+import { io } from '../index';
 
 const router = Router();
 
@@ -25,6 +26,12 @@ router.post('/', validate(schemas.createExpense), async (req: AuthRequest, res: 
       selectedMembers,
       category
     );
+
+    // Emit real-time update to all clients in the group
+    io.to(`group:${groupId}`).emit('expense:created', {
+      expense: result.expense,
+      updatedBalances: result.updatedBalances,
+    });
 
     res.status(201).json({
       success: true,
@@ -111,6 +118,13 @@ router.post('/group/:groupId/settle', async (req: AuthRequest, res: Response, ne
       notes
     );
 
+    // Emit real-time update to all clients in the group
+    io.to(`group:${groupId}`).emit('payment:settled', {
+      from,
+      to,
+      amount,
+    });
+
     res.json({
       success: true,
       data: result,
@@ -149,6 +163,14 @@ router.delete('/:id', async (req: AuthRequest, res: Response, next) => {
 
     const result = await expenseService.deleteExpense(req.userId!, id);
 
+    // Emit real-time update to all clients in the group
+    if (result.deletedExpense) {
+      io.to(`group:${result.deletedExpense.groupId}`).emit('expense:deleted', {
+        expenseId: id,
+        updatedBalances: result.updatedBalances,
+      });
+    }
+
     res.json({
       success: true,
       data: result,
@@ -175,6 +197,14 @@ router.put('/:id', async (req: AuthRequest, res: Response, next) => {
       category,
       selectedMembers
     );
+
+    // Emit real-time update to all clients in the group
+    if (result.expense) {
+      io.to(`group:${result.expense.groupId}`).emit('expense:updated', {
+        expense: result.expense,
+        updatedBalances: result.updatedBalances,
+      });
+    }
 
     res.json({
       success: true,
