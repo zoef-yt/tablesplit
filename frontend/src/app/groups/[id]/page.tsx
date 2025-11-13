@@ -136,7 +136,7 @@ export default function GroupDetailPage() {
 				amount: values.amount,
 				paidBy: user._id,
 				selectedMembers: selectedMembers,
-				category: values.category,
+				category: values.category || undefined, // Don't send empty string
 			});
 
 			setIsExpenseDialogOpen(false);
@@ -222,6 +222,11 @@ export default function GroupDetailPage() {
 			}
 		}
 	}
+
+	// Debug logging
+	console.log("Group members:", group?.members);
+	console.log("Users lookup:", usersLookup);
+	console.log("Settlements:", settlements);
 
 	const handleMarkAsPaid = async (
 		from: string,
