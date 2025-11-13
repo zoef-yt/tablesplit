@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { apiHelpers } from "@/lib/api";
 import { Group } from "@/types";
 
@@ -39,7 +40,11 @@ export function useCreateGroup() {
 		},
 		onSuccess: (newGroup) => {
 			queryClient.invalidateQueries({ queryKey: ["groups"] });
+			toast.success(`Group "${newGroup.name}" created successfully! 🎉`);
 			router.push(`/groups/${newGroup._id}`);
+		},
+		onError: (error: Error) => {
+			toast.error(`Failed to create group: ${error.message}`);
 		},
 	});
 }
@@ -79,7 +84,11 @@ export function useJoinGroup() {
 		},
 		onSuccess: (group) => {
 			queryClient.invalidateQueries({ queryKey: ["groups"] });
+			toast.success(`Successfully joined "${group.name}"! Welcome! 👋`);
 			router.push(`/groups/${group._id}`);
+		},
+		onError: (error: Error) => {
+			toast.error(`Failed to join group: ${error.message}`);
 		},
 	});
 }
@@ -92,6 +101,12 @@ export function useInviteToGroup(groupId: string) {
 				inviteLink: string;
 			}>(`/groups/${groupId}/invite`, data);
 			return response.data!;
+		},
+		onSuccess: () => {
+			toast.success("Invite link generated! Share it with your friends 🔗");
+		},
+		onError: (error: Error) => {
+			toast.error(`Failed to generate invite: ${error.message}`);
 		},
 	});
 }

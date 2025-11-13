@@ -1,8 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { apiHelpers } from "@/lib/api";
 import { Expense, Balance, Settlement, GroupAnalytics } from "@/types";
 import { connectSocket } from "@/lib/socket";
 import { vibrate } from "@/lib/utils";
+import { celebratePayment } from "@/lib/confetti";
 
 export function useExpenses(groupId: string) {
 	return useQuery({
@@ -77,7 +79,11 @@ export function useCreateExpense(groupId: string) {
 				updatedBalances: data.updatedBalances,
 			});
 
+			toast.success(`Expense "${data.expense.description}" added! 💸`);
 			vibrate(50);
+		},
+		onError: (error: Error) => {
+			toast.error(`Failed to add expense: ${error.message}`);
 		},
 	});
 }
@@ -113,7 +119,15 @@ export function useRecordSettlement(groupId: string) {
 				...variables,
 			});
 
+			// Celebrate with confetti and toast!
+			celebratePayment();
+			toast.success(`Payment of ₹${variables.amount.toFixed(2)} settled! 🎉`, {
+				description: `Paid via ${variables.paymentMethod || "UPI"}`,
+			});
 			vibrate([10, 50, 10]);
+		},
+		onError: (error: Error) => {
+			toast.error(`Failed to record payment: ${error.message}`);
 		},
 	});
 }
