@@ -8,7 +8,6 @@ import {
 	Users,
 	PieChart as PieChartIcon,
 	Calendar,
-	DollarSign,
 	IndianRupee,
 	Receipt,
 } from "lucide-react";
@@ -129,7 +128,7 @@ export default function AnalyticsPage() {
 						className="p-4 rounded-xl bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/30"
 					>
 						<div className="flex items-center gap-2 mb-2">
-							<DollarSign className="w-5 h-5 text-purple-400" />
+							<IndianRupee className="w-5 h-5 text-purple-400" />
 							<p className="text-gray-400 text-sm">Average Expense</p>
 						</div>
 						<p className="text-2xl font-bold text-white">

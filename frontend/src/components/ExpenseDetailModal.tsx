@@ -25,7 +25,11 @@ import {
 	DialogTitle,
 } from "@/components/ui/dialog";
 import { formatCurrency } from "@/lib/utils";
-import { useDeleteExpense, useUpdateExpense } from "@/lib/hooks/useExpenses";
+import {
+	useDeleteExpense,
+	useUpdateExpense,
+	useSettlementHistory,
+} from "@/lib/hooks/useExpenses";
 
 interface ExpenseDetailModalProps {
 	expense: Expense | null;
@@ -52,6 +56,7 @@ export function ExpenseDetailModal({
 
 	const deleteExpenseMutation = useDeleteExpense(groupId);
 	const updateExpenseMutation = useUpdateExpense(groupId);
+	const { data: settlementHistory = [] } = useSettlementHistory(groupId);
 
 	useEffect(() => {
 		if (expense) {
@@ -76,9 +81,14 @@ export function ExpenseDetailModal({
 	const isPaidByMe = paidByUser?._id === currentUserId;
 
 	const handleDelete = async () => {
-		const confirmed = confirm(
-			`Are you sure you want to delete "${expense.description}"? This will reverse all balance changes.`,
-		);
+		let message = `Are you sure you want to delete "${expense.description}"? This will reverse all balance changes.`;
+
+		// Add warning if settlements have been made
+		if (settlementHistory.length > 0) {
+			message += "\n\n⚠️ Warning: Settlements have been made in this group. Deleting this expense will affect balances even after settlements.";
+		}
+
+		const confirmed = confirm(message);
 		if (confirmed) {
 			try {
 				await deleteExpenseMutation.mutateAsync(expense._id);
@@ -108,6 +118,16 @@ export function ExpenseDetailModal({
 		if (editSelectedMembers.length === 0) {
 			alert("Please select at least one person to split with");
 			return;
+		}
+
+		// Warn if settlements have been made
+		if (settlementHistory.length > 0) {
+			const confirmed = confirm(
+				"⚠️ Settlements have been made in this group. Editing this expense will affect balances even after settlements. Are you sure you want to continue?",
+			);
+			if (!confirmed) {
+				return;
+			}
 		}
 
 		try {

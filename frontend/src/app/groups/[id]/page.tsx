@@ -1,6 +1,7 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
@@ -275,13 +276,13 @@ export default function GroupDetailPage() {
 						</div>
 					</div>
 					<div className="flex items-center gap-2">
-						<button
-							onClick={() => router.push(`/groups/${groupId}/analytics`)}
+						<Link
+							href={`/groups/${groupId}/analytics`}
 							className="p-2 hover:bg-gray-800 rounded-full transition-colors text-green-500"
 							title="View analytics"
 						>
 							<TrendingUp className="w-6 h-6" />
-						</button>
+						</Link>
 						<GroupSettings group={group} currentUserId={user._id} />
 						<Dialog
 							open={isInviteDialogOpen}
