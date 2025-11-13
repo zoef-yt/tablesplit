@@ -219,9 +219,21 @@ export default function GroupDetailPage() {
 		}
 	}
 
-	const handleMarkAsPaid = async (from: string, to: string, amount: number) => {
+	const handleMarkAsPaid = async (
+		from: string,
+		to: string,
+		amount: number,
+		paymentMethod?: "UPI" | "Cash" | "Bank Transfer" | "Other",
+		notes?: string
+	) => {
 		try {
-			await recordSettlementMutation.mutateAsync({ from, to, amount });
+			await recordSettlementMutation.mutateAsync({
+				from,
+				to,
+				amount,
+				paymentMethod,
+				notes,
+			});
 		} catch (error) {
 			alert(
 				error instanceof Error ? error.message : "Failed to record settlement",

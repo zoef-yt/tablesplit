@@ -2,9 +2,22 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { DollarSign, Users, ArrowRight, ExternalLink, Copy, Check } from "lucide-react";
+import {
+	DollarSign,
+	Users,
+	ArrowRight,
+	ExternalLink,
+	Copy,
+	Check,
+	Smartphone,
+	Banknote,
+	Building2,
+	MoreHorizontal,
+} from "lucide-react";
 import { Settlement, User } from "@/types";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { generateUpiDeepLink, getUpiProvider, openUpiPayment, generateTransactionRef } from "@/lib/upi";
 import { formatCurrency } from "@/lib/utils";
 
@@ -14,7 +27,13 @@ interface SettlementPanelProps {
 	settlements: Settlement[];
 	users: Record<string, User>;
 	currentUserId: string;
-	onMarkAsPaid?: (from: string, to: string, amount: number) => void;
+	onMarkAsPaid?: (
+		from: string,
+		to: string,
+		amount: number,
+		paymentMethod?: "UPI" | "Cash" | "Bank Transfer" | "Other",
+		notes?: string
+	) => void;
 }
 
 export function SettlementPanel({
@@ -25,6 +44,11 @@ export function SettlementPanel({
 	onMarkAsPaid,
 }: SettlementPanelProps) {
 	const [copiedLink, setCopiedLink] = useState<string | null>(null);
+	const [showPaymentMethodSheet, setShowPaymentMethodSheet] = useState(false);
+	const [selectedSettlement, setSelectedSettlement] = useState<Settlement | null>(
+		null
+	);
+	const [paymentNotes, setPaymentNotes] = useState("");
 
 	const mySettlements = settlements.filter(
 		(s) => s.from === currentUserId || s.to === currentUserId,
@@ -49,6 +73,34 @@ export function SettlementPanel({
 		});
 
 		openUpiPayment(upiLink);
+
+		// After opening UPI app, ask user to confirm payment
+		setTimeout(() => {
+			setSelectedSettlement(settlement);
+			setShowPaymentMethodSheet(true);
+		}, 1000);
+	};
+
+	const handleManualPayment = (settlement: Settlement) => {
+		setSelectedSettlement(settlement);
+		setShowPaymentMethodSheet(true);
+	};
+
+	const handleConfirmPayment = (
+		paymentMethod: "UPI" | "Cash" | "Bank Transfer" | "Other"
+	) => {
+		if (selectedSettlement && onMarkAsPaid) {
+			onMarkAsPaid(
+				selectedSettlement.from,
+				selectedSettlement.to,
+				selectedSettlement.amount,
+				paymentMethod,
+				paymentNotes || undefined
+			);
+			setShowPaymentMethodSheet(false);
+			setSelectedSettlement(null);
+			setPaymentNotes("");
+		}
 	};
 
 	const handleCopyUpiLink = (settlement: Settlement) => {
@@ -70,17 +122,6 @@ export function SettlementPanel({
 		navigator.clipboard.writeText(upiLink);
 		setCopiedLink(settlement.from + settlement.to);
 		setTimeout(() => setCopiedLink(null), 2000);
-	};
-
-	const handleMarkPaid = (settlement: Settlement) => {
-		if (onMarkAsPaid) {
-			const confirmed = confirm(
-				`Mark payment of ₹${settlement.amount.toFixed(2)} as paid?`,
-			);
-			if (confirmed) {
-				onMarkAsPaid(settlement.from, settlement.to, settlement.amount);
-			}
-		}
 	};
 
 	if (settlements.length === 0) {
@@ -157,7 +198,7 @@ export function SettlementPanel({
 
 							{isMyPayment && (
 								<div className="flex gap-2">
-									{payee?.upiId ? (
+									{payee?.upiId && (
 										<>
 											<Button
 												onClick={() => handleUpiPayment(settlement)}
@@ -180,16 +221,23 @@ export function SettlementPanel({
 												)}
 											</Button>
 										</>
-									) : (
-										<Button
-											onClick={() => handleMarkPaid(settlement)}
-											variant="outline"
-											className="flex-1 border-gray-700 text-sm"
-											size="sm"
-										>
-											Mark as Paid
-										</Button>
 									)}
+									<Button
+										onClick={() => handleManualPayment(settlement)}
+										variant={payee?.upiId ? "outline" : "default"}
+										className={
+											payee?.upiId
+												? "border-gray-700"
+												: "flex-1 bg-primary-600 hover:bg-primary-700"
+										}
+										size="sm"
+									>
+										{payee?.upiId ? (
+											<MoreHorizontal className="w-4 h-4" />
+										) : (
+											"Mark as Paid"
+										)}
+									</Button>
 								</div>
 							)}
 
@@ -202,6 +250,80 @@ export function SettlementPanel({
 					);
 				})}
 			</AnimatePresence>
+
+			{/* Payment Method Bottom Sheet */}
+			<BottomSheet
+				isOpen={showPaymentMethodSheet}
+				onClose={() => {
+					setShowPaymentMethodSheet(false);
+					setSelectedSettlement(null);
+					setPaymentNotes("");
+				}}
+				title="How did you pay?"
+				subtitle={
+					selectedSettlement
+						? `₹${selectedSettlement.amount.toFixed(2)} to ${users[selectedSettlement.to]?.name}`
+						: ""
+				}
+			>
+				<div className="space-y-4 pb-6">
+					<p className="text-gray-400 text-sm">
+						Select the payment method you used to settle this amount.
+					</p>
+
+					{/* Payment Method Buttons */}
+					<div className="grid grid-cols-2 gap-3">
+						<Button
+							onClick={() => handleConfirmPayment("UPI")}
+							variant="outline"
+							className="h-20 flex-col gap-2 border-gray-700 hover:border-primary-500 hover:bg-primary-500/10"
+						>
+							<Smartphone className="w-6 h-6 text-primary-400" />
+							<span>UPI</span>
+						</Button>
+
+						<Button
+							onClick={() => handleConfirmPayment("Cash")}
+							variant="outline"
+							className="h-20 flex-col gap-2 border-gray-700 hover:border-green-500 hover:bg-green-500/10"
+						>
+							<Banknote className="w-6 h-6 text-green-400" />
+							<span>Cash</span>
+						</Button>
+
+						<Button
+							onClick={() => handleConfirmPayment("Bank Transfer")}
+							variant="outline"
+							className="h-20 flex-col gap-2 border-gray-700 hover:border-blue-500 hover:bg-blue-500/10"
+						>
+							<Building2 className="w-6 h-6 text-blue-400" />
+							<span>Bank Transfer</span>
+						</Button>
+
+						<Button
+							onClick={() => handleConfirmPayment("Other")}
+							variant="outline"
+							className="h-20 flex-col gap-2 border-gray-700 hover:border-purple-500 hover:bg-purple-500/10"
+						>
+							<MoreHorizontal className="w-6 h-6 text-purple-400" />
+							<span>Other</span>
+						</Button>
+					</div>
+
+					{/* Optional Notes */}
+					<div className="space-y-2">
+						<label className="text-sm text-gray-300">
+							Notes (optional)
+						</label>
+						<Input
+							value={paymentNotes}
+							onChange={(e) => setPaymentNotes(e.target.value)}
+							placeholder="Add any notes about this payment..."
+							className="bg-gray-800 border-gray-700 text-white"
+						/>
+					</div>
+				</div>
+			</BottomSheet>
 		</div>
 	);
 }

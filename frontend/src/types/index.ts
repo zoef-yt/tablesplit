@@ -54,13 +54,26 @@ export interface Balance {
 	lastUpdated: Date;
 }
 
-// Settlement Types
+// Settlement Types (calculated settlements)
 export interface Settlement {
 	from: string;
 	fromUser?: User;
 	to: string;
 	toUser?: User;
 	amount: number;
+}
+
+// Settlement Record (stored in database)
+export interface SettlementRecord {
+	_id: string;
+	groupId: string;
+	fromUserId: string | User;
+	toUserId: string | User;
+	amount: number;
+	paymentMethod?: 'UPI' | 'Cash' | 'Bank Transfer' | 'Other';
+	notes?: string;
+	settledAt: Date;
+	createdAt: Date;
 }
 
 // Auth Types

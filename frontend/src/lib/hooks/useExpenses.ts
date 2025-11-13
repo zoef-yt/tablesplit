@@ -86,7 +86,13 @@ export function useRecordSettlement(groupId: string) {
 	const queryClient = useQueryClient();
 
 	return useMutation({
-		mutationFn: async (data: { from: string; to: string; amount: number }) => {
+		mutationFn: async (data: {
+			from: string;
+			to: string;
+			amount: number;
+			paymentMethod?: "UPI" | "Cash" | "Bank Transfer" | "Other";
+			notes?: string;
+		}) => {
 			const response = await apiHelpers.post(
 				`/expenses/group/${groupId}/settle`,
 				data,
@@ -96,6 +102,9 @@ export function useRecordSettlement(groupId: string) {
 		onSuccess: (data, variables) => {
 			queryClient.invalidateQueries({ queryKey: ["balances", groupId] });
 			queryClient.invalidateQueries({ queryKey: ["settlements", groupId] });
+			queryClient.invalidateQueries({
+				queryKey: ["settlement-history", groupId],
+			});
 
 			// Emit socket event
 			const socket = connectSocket();
@@ -106,6 +115,19 @@ export function useRecordSettlement(groupId: string) {
 
 			vibrate([10, 50, 10]);
 		},
+	});
+}
+
+export function useSettlementHistory(groupId: string) {
+	return useQuery({
+		queryKey: ["settlement-history", groupId],
+		queryFn: async () => {
+			const response = await apiHelpers.get(
+				`/expenses/group/${groupId}/settlement-history`,
+			);
+			return response.data || [];
+		},
+		enabled: !!groupId,
 	});
 }
 
