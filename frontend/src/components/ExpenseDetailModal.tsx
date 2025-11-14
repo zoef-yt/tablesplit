@@ -74,15 +74,20 @@ export function ExpenseDetailModal({
 
 	// Track user activity when modal opens/closes
 	useEffect(() => {
-		if (isOpen && expense) {
-			if (isEditMode) {
-				emitUserActivity(groupId, `Editing expense: ${expense.description}`);
-			} else {
-				emitUserActivity(groupId, `Viewing expense: ${expense.description}`);
+		// Small delay to ensure socket has joined group
+		const timer = setTimeout(() => {
+			if (isOpen && expense) {
+				if (isEditMode) {
+					emitUserActivity(groupId, `Editing expense: ${expense.description}`);
+				} else {
+					emitUserActivity(groupId, `Viewing expense: ${expense.description}`);
+				}
+			} else if (!isOpen) {
+				emitUserActivity(groupId, null); // Clear activity
 			}
-		} else if (!isOpen) {
-			emitUserActivity(groupId, null); // Clear activity
-		}
+		}, 200);
+
+		return () => clearTimeout(timer);
 	}, [isOpen, expense, groupId, isEditMode]);
 
 	if (!expense) return null;

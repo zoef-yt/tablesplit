@@ -54,9 +54,13 @@ export default function AnalyticsPage() {
 
 	// Track user activity when viewing analytics
 	useEffect(() => {
-		emitUserActivity(groupId, "Viewing analytics...");
+		// Small delay to ensure socket has joined group
+		const timer = setTimeout(() => {
+			emitUserActivity(groupId, "Viewing analytics...");
+		}, 200);
 
 		return () => {
+			clearTimeout(timer);
 			emitUserActivity(groupId, null);
 		};
 	}, [groupId]);

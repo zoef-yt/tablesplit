@@ -102,12 +102,17 @@ export default function GroupDetailPage() {
 
 	// Track activity when adding expense
 	useEffect(() => {
-		if (isExpenseDialogOpen) {
-			emitUserActivity(groupId, "Adding an expense...");
-		} else if (!isExpenseDetailOpen) {
-			// Only clear if expense detail is also closed
-			emitUserActivity(groupId, null);
-		}
+		// Small delay to ensure socket has joined group
+		const timer = setTimeout(() => {
+			if (isExpenseDialogOpen) {
+				emitUserActivity(groupId, "Adding an expense...");
+			} else if (!isExpenseDetailOpen) {
+				// Only clear if expense detail is also closed
+				emitUserActivity(groupId, null);
+			}
+		}, 200);
+
+		return () => clearTimeout(timer);
 	}, [isExpenseDialogOpen, isExpenseDetailOpen, groupId]);
 
 	// Initialize selected members when group loads

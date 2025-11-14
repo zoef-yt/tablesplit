@@ -19,11 +19,21 @@ export function useOnlineUsers(groupId: string | undefined) {
 
 		const socket = getSocket();
 
-		// Request initial online users
-		requestOnlineUsers(groupId);
+		// Wait for socket connection before requesting
+		if (socket.connected) {
+			requestOnlineUsers(groupId);
+		} else {
+			// Request when socket connects
+			const handleConnect = () => {
+				console.log("🔌 Socket connected, requesting online users");
+				requestOnlineUsers(groupId);
+			};
+			socket.once("connect", handleConnect);
+		}
 
 		// Listen for online users updates
 		const handleOnlineUsers = ({ onlineUsers }: { onlineUsers: string[] }) => {
+			console.log("👥 Received online users:", onlineUsers);
 			setOnlineUsers(onlineUsers);
 		};
 
@@ -45,8 +55,17 @@ export function useUserActivities(groupId: string | undefined) {
 
 		const socket = getSocket();
 
-		// Request initial activities
-		requestUserActivities(groupId);
+		// Wait for socket connection before requesting
+		if (socket.connected) {
+			requestUserActivities(groupId);
+		} else {
+			// Request when socket connects
+			const handleConnect = () => {
+				console.log("🔌 Socket connected, requesting user activities");
+				requestUserActivities(groupId);
+			};
+			socket.once("connect", handleConnect);
+		}
 
 		// Listen for activities updates
 		const handleActivities = ({
@@ -54,6 +73,7 @@ export function useUserActivities(groupId: string | undefined) {
 		}: {
 			activities: Record<string, string>;
 		}) => {
+			console.log("🎯 Received all activities:", activities);
 			setActivities(activities);
 		};
 
@@ -64,6 +84,7 @@ export function useUserActivities(groupId: string | undefined) {
 			userId: string;
 			activity: string | null;
 		}) => {
+			console.log("🎯 Received activity update:", userId, activity);
 			setActivities((prev) => {
 				if (activity === null) {
 					const { [userId]: _, ...rest } = prev;

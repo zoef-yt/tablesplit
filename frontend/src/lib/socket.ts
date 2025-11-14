@@ -16,6 +16,15 @@ export const getSocket = (): Socket => {
 			},
 		});
 
+		// Connection event handlers
+		socket.on("connect", () => {
+			console.log("✅ Socket connected:", socket!.id);
+		});
+
+		socket.on("disconnect", () => {
+			console.log("❌ Socket disconnected");
+		});
+
 		// Reconnect logic with updated token
 		socket.on("connect_error", (error) => {
 			console.error("Socket connection error:", error.message);
@@ -50,13 +59,17 @@ export const disconnectSocket = (): void => {
 export const joinGroup = (groupId: string): void => {
 	const socket = getSocket();
 	if (socket.connected) {
+		console.log("📍 Joining group:", groupId);
 		socket.emit("group:join", groupId);
+	} else {
+		console.warn("⚠️ Cannot join group - socket not connected");
 	}
 };
 
 export const leaveGroup = (groupId: string): void => {
 	const socket = getSocket();
 	if (socket.connected) {
+		console.log("📍 Leaving group:", groupId);
 		socket.emit("group:leave", groupId);
 	}
 };
@@ -64,20 +77,34 @@ export const leaveGroup = (groupId: string): void => {
 export const emitUserActivity = (groupId: string, activity: string | null): void => {
 	const socket = getSocket();
 	if (socket.connected) {
+		console.log("🎯 Emitting activity:", activity, "for group:", groupId);
 		socket.emit("user:activity", { groupId, activity });
+	} else {
+		console.warn("⚠️ Socket not connected yet, waiting to emit activity:", activity);
+		// Wait for socket to connect, then emit
+		socket.once("connect", () => {
+			console.log("🎯 Socket connected, now emitting activity:", activity);
+			socket.emit("user:activity", { groupId, activity });
+		});
 	}
 };
 
 export const requestOnlineUsers = (groupId: string): void => {
 	const socket = getSocket();
 	if (socket.connected) {
+		console.log("👥 Requesting online users for group:", groupId);
 		socket.emit("users:get-online", { groupId });
+	} else {
+		console.warn("⚠️ Cannot request online users - socket not connected");
 	}
 };
 
 export const requestUserActivities = (groupId: string): void => {
 	const socket = getSocket();
 	if (socket.connected) {
+		console.log("🎯 Requesting user activities for group:", groupId);
 		socket.emit("users:get-activities", { groupId });
+	} else {
+		console.warn("⚠️ Cannot request activities - socket not connected");
 	}
 };

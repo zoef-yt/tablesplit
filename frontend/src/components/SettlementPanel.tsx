@@ -56,15 +56,20 @@ export function SettlementPanel({
 
 	// Track user activity when making a payment
 	useEffect(() => {
-		if (showPaymentMethodSheet && selectedSettlement) {
-			const payee = users[selectedSettlement.to];
-			emitUserActivity(
-				groupId,
-				`Making a payment to ${payee?.name || "someone"}...`
-			);
-		} else if (!showPaymentMethodSheet) {
-			emitUserActivity(groupId, null);
-		}
+		// Small delay to ensure socket has joined group
+		const timer = setTimeout(() => {
+			if (showPaymentMethodSheet && selectedSettlement) {
+				const payee = users[selectedSettlement.to];
+				emitUserActivity(
+					groupId,
+					`Making a payment to ${payee?.name || "someone"}...`
+				);
+			} else if (!showPaymentMethodSheet) {
+				emitUserActivity(groupId, null);
+			}
+		}, 200);
+
+		return () => clearTimeout(timer);
 	}, [showPaymentMethodSheet, selectedSettlement, groupId, users]);
 
 	const mySettlements = settlements.filter(
