@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
 	DollarSign,
@@ -20,6 +20,7 @@ import { Input } from "@/components/ui/input";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { generateUpiDeepLink, getUpiProvider, openUpiPayment, generateTransactionRef } from "@/lib/upi";
 import { formatCurrency } from "@/lib/utils";
+import { emitUserActivity } from "@/lib/socket";
 
 interface SettlementPanelProps {
 	groupId: string;
@@ -37,6 +38,7 @@ interface SettlementPanelProps {
 }
 
 export function SettlementPanel({
+	groupId,
 	groupName,
 	settlements,
 	users,
@@ -51,6 +53,19 @@ export function SettlementPanel({
 	const [paymentNotes, setPaymentNotes] = useState("");
 	const [customAmount, setCustomAmount] = useState("");
 	const [useCustomAmount, setUseCustomAmount] = useState(false);
+
+	// Track user activity when making a payment
+	useEffect(() => {
+		if (showPaymentMethodSheet && selectedSettlement) {
+			const payee = users[selectedSettlement.to];
+			emitUserActivity(
+				groupId,
+				`Making a payment to ${payee?.name || "someone"}...`
+			);
+		} else if (!showPaymentMethodSheet) {
+			emitUserActivity(groupId, null);
+		}
+	}, [showPaymentMethodSheet, selectedSettlement, groupId, users]);
 
 	const mySettlements = settlements.filter(
 		(s) => s.from === currentUserId || s.to === currentUserId,

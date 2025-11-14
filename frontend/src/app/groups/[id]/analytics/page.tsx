@@ -1,6 +1,7 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { motion } from "framer-motion";
 import {
 	ArrowLeft,
@@ -15,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { useGroupAnalytics } from "@/lib/hooks/useExpenses";
 import { useGroup } from "@/lib/hooks/useGroups";
 import { formatCurrency } from "@/lib/utils";
+import { emitUserActivity } from "@/lib/socket";
 import {
 	PieChart,
 	Pie,
@@ -49,6 +51,15 @@ export default function AnalyticsPage() {
 
 	const { data: group } = useGroup(groupId);
 	const { data: analytics, isLoading } = useGroupAnalytics(groupId);
+
+	// Track user activity when viewing analytics
+	useEffect(() => {
+		emitUserActivity(groupId, "Viewing analytics...");
+
+		return () => {
+			emitUserActivity(groupId, null);
+		};
+	}, [groupId]);
 
 	if (isLoading || !analytics) {
 		return (

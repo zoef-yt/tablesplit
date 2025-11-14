@@ -4,6 +4,8 @@ const nextConfig = {
 	images: {
 		domains: ["localhost"],
 	},
+	output: "standalone",
+	outputFileTracingRoot: require("path").join(__dirname, "../"),
 };
 
 module.exports = nextConfig;

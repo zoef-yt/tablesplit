@@ -32,6 +32,7 @@ export default function JoinGroupPage() {
 			hasAttemptedJoin.current = true;
 			joinGroupMutation.mutate(token);
 		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [user, isHydrated, token]);
 
 	// Redirect to login if not authenticated
