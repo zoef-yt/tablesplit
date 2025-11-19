@@ -174,7 +174,7 @@ router.post('/:id/members', async (req: AuthRequest, res: Response, next) => {
       data: group,
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 });
 
