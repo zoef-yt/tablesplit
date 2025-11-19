@@ -211,3 +211,24 @@ export interface GroupAnalytics {
 	userStats: UserStats;
 	groupTotals: GroupTotals;
 }
+
+// Friend Types
+export interface FriendRequest {
+	_id: string;
+	from: User | string;
+	to: User | string;
+	status: 'pending' | 'accepted' | 'declined';
+	createdAt: Date;
+	updatedAt: Date;
+}
+
+export interface Friend {
+	_id: string;
+	user1: User | string;
+	user2: User | string;
+	createdAt: Date;
+}
+
+export interface UserWithFriendshipStatus extends User {
+	friendshipStatus?: 'friends' | 'request_sent' | 'request_received' | 'none';
+}

@@ -46,6 +46,7 @@ export function SettlementPanel({
 	onMarkAsPaid,
 }: SettlementPanelProps) {
 	const [copiedLink, setCopiedLink] = useState<string | null>(null);
+	const [showPaymentConfirmSheet, setShowPaymentConfirmSheet] = useState(false);
 	const [showPaymentMethodSheet, setShowPaymentMethodSheet] = useState(false);
 	const [selectedSettlement, setSelectedSettlement] = useState<Settlement | null>(
 		null
@@ -53,6 +54,7 @@ export function SettlementPanel({
 	const [paymentNotes, setPaymentNotes] = useState("");
 	const [customAmount, setCustomAmount] = useState("");
 	const [useCustomAmount, setUseCustomAmount] = useState(false);
+	const [upiPaymentAttempted, setUpiPaymentAttempted] = useState(false);
 
 	// Track if we've emitted an activity (to avoid emitting null on initial render)
 	const hasEmittedActivityRef = useRef(false);
@@ -61,14 +63,14 @@ export function SettlementPanel({
 	useEffect(() => {
 		// Small delay to ensure socket has joined group
 		const timer = setTimeout(() => {
-			if (showPaymentMethodSheet && selectedSettlement) {
+			if ((showPaymentConfirmSheet || showPaymentMethodSheet) && selectedSettlement) {
 				const payee = users[selectedSettlement.to];
 				emitUserActivity(
 					groupId,
 					`Making a payment to ${payee?.name || "someone"}...`
 				);
 				hasEmittedActivityRef.current = true;
-			} else if (!showPaymentMethodSheet && hasEmittedActivityRef.current) {
+			} else if (!showPaymentConfirmSheet && !showPaymentMethodSheet && hasEmittedActivityRef.current) {
 				// Only clear if we previously emitted an activity
 				emitUserActivity(groupId, null);
 				hasEmittedActivityRef.current = false;
@@ -76,7 +78,7 @@ export function SettlementPanel({
 		}, 200);
 
 		return () => clearTimeout(timer);
-	}, [showPaymentMethodSheet, selectedSettlement, groupId, users]);
+	}, [showPaymentConfirmSheet, showPaymentMethodSheet, selectedSettlement, groupId, users]);
 
 	const mySettlements = settlements.filter(
 		(s) => s.from === currentUserId || s.to === currentUserId,
@@ -101,11 +103,14 @@ export function SettlementPanel({
 		});
 
 		openUpiPayment(upiLink);
+		setUpiPaymentAttempted(true);
 
-		// After opening UPI app, ask user to confirm payment
+		// After opening UPI app, ask user to confirm if payment was successful
 		setTimeout(() => {
 			setSelectedSettlement(settlement);
-			setShowPaymentMethodSheet(true);
+			setCustomAmount(settlement.amount.toString());
+			setUseCustomAmount(false);
+			setShowPaymentConfirmSheet(true);
 		}, 1000);
 	};
 
@@ -113,7 +118,25 @@ export function SettlementPanel({
 		setSelectedSettlement(settlement);
 		setCustomAmount(settlement.amount.toString());
 		setUseCustomAmount(false);
+		setUpiPaymentAttempted(false);
+		setShowPaymentConfirmSheet(true);
+	};
+
+	const handleProceedToPayment = () => {
+		// User confirmed they want to proceed, now show payment method selection
+		setShowPaymentConfirmSheet(false);
 		setShowPaymentMethodSheet(true);
+	};
+
+	const handleCancelPayment = () => {
+		// User cancelled the payment
+		setShowPaymentConfirmSheet(false);
+		setShowPaymentMethodSheet(false);
+		setSelectedSettlement(null);
+		setPaymentNotes("");
+		setCustomAmount("");
+		setUseCustomAmount(false);
+		setUpiPaymentAttempted(false);
 	};
 
 	const handleConfirmPayment = (
@@ -142,6 +165,7 @@ export function SettlementPanel({
 			setPaymentNotes("");
 			setCustomAmount("");
 			setUseCustomAmount(false);
+			setUpiPaymentAttempted(false);
 		}
 	};
 
@@ -411,6 +435,116 @@ export function SettlementPanel({
 							className="bg-gray-800 border-gray-700 text-white"
 						/>
 					</div>
+				</div>
+			</BottomSheet>
+
+			{/* Payment Confirmation Bottom Sheet */}
+			<BottomSheet
+				isOpen={showPaymentConfirmSheet}
+				onClose={handleCancelPayment}
+				title={upiPaymentAttempted ? "Payment Confirmation" : "Settle Payment"}
+				subtitle={
+					selectedSettlement
+						? `To ${users[selectedSettlement.to]?.name}`
+						: ""
+				}
+			>
+				<div className="space-y-6 pb-6">
+					{upiPaymentAttempted ? (
+						<>
+							{/* UPI Payment Confirmation */}
+							<div className="text-center space-y-4">
+								<div className="p-4 rounded-lg bg-primary-500/10 border border-primary-500/30">
+									<p className="text-2xl font-bold text-primary-400">
+										₹{selectedSettlement?.amount.toFixed(2)}
+									</p>
+									<p className="text-sm text-gray-400 mt-1">
+										To {users[selectedSettlement?.to || ""]?.name}
+									</p>
+									{users[selectedSettlement?.to || ""]?.upiId && (
+										<p className="text-xs text-primary-400 mt-2">
+											UPI ID: {users[selectedSettlement?.to || ""]?.upiId}
+										</p>
+									)}
+								</div>
+
+								<div className="space-y-2">
+									<p className="text-white font-medium">
+										Did you complete the payment successfully?
+									</p>
+									<p className="text-sm text-gray-400">
+										Please confirm that the payment was successful in your UPI app
+										before proceeding.
+									</p>
+								</div>
+							</div>
+
+							{/* Action Buttons */}
+							<div className="grid grid-cols-2 gap-3">
+								<Button
+									onClick={handleCancelPayment}
+									variant="outline"
+									className="border-gray-700"
+								>
+									Cancel
+								</Button>
+								<Button
+									onClick={handleProceedToPayment}
+									className="bg-green-600 hover:bg-green-700"
+								>
+									Yes, Payment Done
+								</Button>
+							</div>
+						</>
+					) : (
+						<>
+							{/* Manual Payment Confirmation */}
+							<div className="space-y-4">
+								<div className="p-4 rounded-lg bg-gray-800/50 border border-gray-700">
+									<p className="text-2xl font-bold text-white">
+										₹{selectedSettlement?.amount.toFixed(2)}
+									</p>
+									<p className="text-sm text-gray-400 mt-1">
+										To {users[selectedSettlement?.to || ""]?.name}
+									</p>
+									{users[selectedSettlement?.to || ""]?.upiId && (
+										<div className="mt-3 pt-3 border-t border-gray-700">
+											<p className="text-xs text-gray-400">UPI ID</p>
+											<p className="text-sm text-primary-400 font-mono">
+												{users[selectedSettlement?.to || ""]?.upiId}
+											</p>
+										</div>
+									)}
+								</div>
+
+								<div className="space-y-2">
+									<p className="text-white font-medium">
+										Ready to mark this payment as settled?
+									</p>
+									<p className="text-sm text-gray-400">
+										Make sure you&apos;ve completed the payment before confirming.
+									</p>
+								</div>
+							</div>
+
+							{/* Action Buttons */}
+							<div className="grid grid-cols-2 gap-3">
+								<Button
+									onClick={handleCancelPayment}
+									variant="outline"
+									className="border-gray-700"
+								>
+									Cancel
+								</Button>
+								<Button
+									onClick={handleProceedToPayment}
+									className="bg-primary-600 hover:bg-primary-700"
+								>
+									Yes, Proceed
+								</Button>
+							</div>
+						</>
+					)}
 				</div>
 			</BottomSheet>
 		</div>
