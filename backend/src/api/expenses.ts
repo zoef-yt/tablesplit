@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import { expenseService } from '../services/expense.service';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
 import { validate, schemas } from '../middleware/validation';
+import { io } from '../index';
 
 const router = Router();
 
@@ -25,6 +26,12 @@ router.post('/', validate(schemas.createExpense), async (req: AuthRequest, res: 
       selectedMembers,
       category
     );
+
+    // Emit real-time update to all clients in the group
+    io.to(`group:${groupId}`).emit('expense:created', {
+      expense: result.expense,
+      updatedBalances: result.updatedBalances,
+    });
 
     res.status(201).json({
       success: true,
@@ -99,19 +106,128 @@ router.get('/group/:groupId/settlement', async (req: AuthRequest, res: Response,
 router.post('/group/:groupId/settle', async (req: AuthRequest, res: Response, next) => {
   try {
     const { groupId } = req.params;
-    const { from, to, amount } = req.body;
+    const { from, to, amount, paymentMethod, notes } = req.body;
 
-    const updatedBalances = await expenseService.recordSettlement(
+    const result = await expenseService.recordSettlement(
       req.userId!,
       groupId,
       from,
       to,
-      amount
+      amount,
+      paymentMethod,
+      notes
     );
+
+    // Emit real-time update to all clients in the group
+    io.to(`group:${groupId}`).emit('payment:settled', {
+      from,
+      to,
+      amount,
+    });
 
     res.json({
       success: true,
-      data: updatedBalances,
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * GET /api/expenses/group/:groupId/settlement-history
+ * Get settlement history for a group
+ */
+router.get('/group/:groupId/settlement-history', async (req: AuthRequest, res: Response, next) => {
+  try {
+    const { groupId } = req.params;
+
+    const history = await expenseService.getSettlementHistory(req.userId!, groupId);
+
+    res.json({
+      success: true,
+      data: history,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * DELETE /api/expenses/:id
+ * Delete an expense
+ */
+router.delete('/:id', async (req: AuthRequest, res: Response, next) => {
+  try {
+    const { id } = req.params;
+
+    const result = await expenseService.deleteExpense(req.userId!, id);
+
+    // Emit real-time update to all clients in the group
+    if (result.deletedExpense) {
+      io.to(`group:${result.deletedExpense.groupId}`).emit('expense:deleted', {
+        expenseId: id,
+        updatedBalances: result.updatedBalances,
+      });
+    }
+
+    res.json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * PUT /api/expenses/:id
+ * Update an expense
+ */
+router.put('/:id', async (req: AuthRequest, res: Response, next) => {
+  try {
+    const { id } = req.params;
+    const { description, amount, category, selectedMembers } = req.body;
+
+    const result = await expenseService.updateExpense(
+      req.userId!,
+      id,
+      description,
+      amount,
+      category,
+      selectedMembers
+    );
+
+    // Emit real-time update to all clients in the group
+    if (result.expense) {
+      io.to(`group:${result.expense.groupId}`).emit('expense:updated', {
+        expense: result.expense,
+        updatedBalances: result.updatedBalances,
+      });
+    }
+
+    res.json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * GET /api/expenses/group/:groupId/analytics
+ * Get analytics for a group
+ */
+router.get('/group/:groupId/analytics', async (req: AuthRequest, res: Response, next) => {
+  try {
+    const { groupId } = req.params;
+
+    const analytics = await expenseService.getGroupAnalytics(req.userId!, groupId);
+
+    res.json({
+      success: true,
+      data: analytics,
     });
   } catch (error) {
     next(error);

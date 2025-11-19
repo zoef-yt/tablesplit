@@ -1,111 +1,132 @@
-'use client';
+"use client";
 
-import { motion } from 'framer-motion';
-import { Coins, Users, Zap, Sparkles } from 'lucide-react';
-import Link from 'next/link';
+import { motion } from "framer-motion";
+import { Users, TrendingUp, Shield, ArrowRight } from "lucide-react";
+import Link from "next/link";
 
 export default function HomePage() {
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-felt-900 to-slate-950">
-      {/* Hero Section */}
-      <div className="container mx-auto px-4 py-16">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="text-center"
-        >
-          {/* Logo/Icon */}
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
-            className="inline-block mb-8"
-          >
-            <div className="w-24 h-24 mx-auto rounded-full bg-gradient-to-br from-gold-500 to-gold-700 flex items-center justify-center shadow-glow-gold-strong">
-              <Coins className="w-12 h-12 text-slate-950" />
-            </div>
-          </motion.div>
+	return (
+		<div className="min-h-screen bg-gradient-dark relative overflow-hidden">
+			{/* Animated background elements */}
+			<div className="absolute inset-0 overflow-hidden">
+				<div className="absolute top-1/4 -left-48 w-96 h-96 bg-primary-500/10 rounded-full blur-3xl animate-pulse" />
+				<div
+					className="absolute bottom-1/4 -right-48 w-96 h-96 bg-accent-500/10 rounded-full blur-3xl animate-pulse"
+					style={{ animationDelay: "1s" }}
+				/>
+			</div>
 
-          {/* Title */}
-          <h1 className="text-5xl md:text-7xl font-bold text-white mb-4">
-            Table<span className="text-gold-500">Split</span>
-          </h1>
+			{/* Hero Section */}
+			<div className="relative z-10 container mx-auto px-4 py-20 md:py-32">
+				<motion.div
+					initial={{ opacity: 0, y: 20 }}
+					animate={{ opacity: 1, y: 0 }}
+					transition={{ duration: 0.6 }}
+					className="text-center max-w-4xl mx-auto"
+				>
+					{/* Logo */}
+					<motion.div
+						initial={{ scale: 0.8, opacity: 0 }}
+						animate={{ scale: 1, opacity: 1 }}
+						transition={{ delay: 0.2, type: "spring", stiffness: 100 }}
+						className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-slate-800/50 border border-primary-500/20 mb-8 backdrop-blur-sm"
+					>
+						<div className="w-10 h-10 rounded-full bg-gradient-primary flex items-center justify-center shadow-glow">
+							<Users className="w-5 h-5 text-white" />
+						</div>
+						<span className="text-lg font-semibold text-white">TableSplit</span>
+					</motion.div>
 
-          <p className="text-xl md:text-2xl text-gray-300 mb-8 max-w-2xl mx-auto">
-            Group expenses meet poker table magic. Track, split, and settle with style.
-          </p>
+					{/* Headline */}
+					<h1 className="text-5xl md:text-7xl font-bold text-white mb-6 leading-tight">
+						Split Expenses.
+						<br />
+						<span className="bg-gradient-to-r from-primary-400 to-accent-400 bg-clip-text text-transparent">
+							Not Friendships.
+						</span>
+					</h1>
 
-          {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
-            <Link href="/auth/login">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="px-8 py-4 bg-gold-500 text-slate-950 rounded-lg font-bold text-lg shadow-chip hover:bg-gold-400 transition-colors"
-              >
-                Get Started
-              </motion.button>
-            </Link>
-            <Link href="/demo">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="px-8 py-4 bg-felt-700 text-white rounded-lg font-bold text-lg border-2 border-gold-700 hover:bg-felt-600 transition-colors"
-              >
-                View Demo
-              </motion.button>
-            </Link>
-          </div>
+					<p className="text-xl md:text-2xl text-slate-300 mb-12 max-w-2xl mx-auto leading-relaxed">
+						The modern way to track and settle group expenses. Simple, fast, and
+						beautifully designed.
+					</p>
 
-          {/* Feature Cards */}
-          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            <FeatureCard
-              icon={<Zap className="w-8 h-8" />}
-              title="Real-time Magic"
-              description="Watch balances flow like chips across the felt with butter-smooth animations"
-              delay={0.3}
-            />
-            <FeatureCard
-              icon={<Users className="w-8 h-8" />}
-              title="Social First"
-              description="Groups are communities, not spreadsheets. Invite friends and track together"
-              delay={0.4}
-            />
-            <FeatureCard
-              icon={<Sparkles className="w-8 h-8" />}
-              title="Friction-free"
-              description="Complex math hidden behind simple gestures. Just add, split, settle"
-              delay={0.5}
-            />
-          </div>
-        </motion.div>
-      </div>
-    </div>
-  );
+					{/* CTA Button */}
+					<div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-20">
+						<Link href="/auth/login">
+							<motion.button
+								whileHover={{ scale: 1.02 }}
+								whileTap={{ scale: 0.98 }}
+								className="group px-8 py-4 bg-gradient-primary text-white rounded-xl font-semibold text-lg shadow-glow hover:shadow-glow-lg transition-all duration-300 flex items-center gap-2"
+							>
+								Get Started Free
+								<ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+							</motion.button>
+						</Link>
+						<Link href="#features">
+							<motion.button
+								whileHover={{ scale: 1.02 }}
+								whileTap={{ scale: 0.98 }}
+								className="px-8 py-4 bg-slate-800/50 text-white rounded-xl font-semibold text-lg border border-slate-700 hover:border-primary-500/50 transition-all duration-300 backdrop-blur-sm"
+							>
+								Learn More
+							</motion.button>
+						</Link>
+					</div>
+
+					{/* Feature Cards */}
+					<div
+						id="features"
+						className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto"
+					>
+						<FeatureCard
+							icon={<TrendingUp className="w-6 h-6" />}
+							title="Real-time Sync"
+							description="See updates instantly. Everyone stays in the loop, always."
+							delay={0.3}
+						/>
+						<FeatureCard
+							icon={<Users className="w-6 h-6" />}
+							title="Smart Splitting"
+							description="Fair splits calculated automatically. No math required."
+							delay={0.4}
+						/>
+						<FeatureCard
+							icon={<Shield className="w-6 h-6" />}
+							title="Secure & Private"
+							description="Your data is encrypted and never shared. Period."
+							delay={0.5}
+						/>
+					</div>
+				</motion.div>
+			</div>
+		</div>
+	);
 }
 
 function FeatureCard({
-  icon,
-  title,
-  description,
-  delay,
+	icon,
+	title,
+	description,
+	delay,
 }: {
-  icon: React.ReactNode;
-  title: string;
-  description: string;
-  delay: number;
+	icon: React.ReactNode;
+	title: string;
+	description: string;
+	delay: number;
 }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay, duration: 0.5 }}
-      className="p-6 rounded-xl bg-felt-700/50 border border-gold-900/30 backdrop-blur-sm hover:border-gold-700/50 transition-colors"
-    >
-      <div className="text-gold-500 mb-4">{icon}</div>
-      <h3 className="text-xl font-bold text-white mb-2">{title}</h3>
-      <p className="text-gray-300">{description}</p>
-    </motion.div>
-  );
+	return (
+		<motion.div
+			initial={{ opacity: 0, y: 20 }}
+			animate={{ opacity: 1, y: 0 }}
+			transition={{ delay, duration: 0.5 }}
+			className="group p-6 rounded-2xl bg-slate-800/40 border border-slate-700/50 backdrop-blur-sm hover:border-primary-500/50 hover:bg-slate-800/60 transition-all duration-300"
+		>
+			<div className="w-12 h-12 rounded-xl bg-primary-500/10 flex items-center justify-center mb-4 group-hover:bg-primary-500/20 transition-colors">
+				<div className="text-primary-400">{icon}</div>
+			</div>
+			<h3 className="text-lg font-semibold text-white mb-2">{title}</h3>
+			<p className="text-slate-400 text-sm leading-relaxed">{description}</p>
+		</motion.div>
+	);
 }

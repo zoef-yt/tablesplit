@@ -1,41 +1,41 @@
 {
-  "name": "TableSplit - Group Expense Tracker",
-  "short_name": "TableSplit",
-  "description": "Track group expenses with poker-themed social experience",
-  "start_url": "/",
-  "display": "standalone",
-  "background_color": "#0a2617",
-  "theme_color": "#1a4d2e",
-  "orientation": "portrait",
-  "icons": [
-    {
-      "src": "/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
-    }
-  ],
-  "categories": ["finance", "social", "utilities"],
-  "shortcuts": [
-    {
-      "name": "Add Expense",
-      "short_name": "Add",
-      "description": "Quickly add a new expense",
-      "url": "/expenses/new",
-      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
-    },
-    {
-      "name": "My Groups",
-      "short_name": "Groups",
-      "description": "View your expense groups",
-      "url": "/groups",
-      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
-    }
-  ]
+	"name": "TableSplit - Group Expense Tracker",
+	"short_name": "TableSplit",
+	"description": "Track group expenses with poker-themed social experience",
+	"start_url": "/",
+	"display": "standalone",
+	"background_color": "#0a2617",
+	"theme_color": "#1a4d2e",
+	"orientation": "portrait",
+	"icons": [
+		{
+			"src": "/icon-192.png",
+			"sizes": "192x192",
+			"type": "image/png",
+			"purpose": "any maskable"
+		},
+		{
+			"src": "/icon-512.png",
+			"sizes": "512x512",
+			"type": "image/png",
+			"purpose": "any maskable"
+		}
+	],
+	"categories": ["finance", "social", "utilities"],
+	"shortcuts": [
+		{
+			"name": "Add Expense",
+			"short_name": "Add",
+			"description": "Quickly add a new expense",
+			"url": "/expenses/new",
+			"icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+		},
+		{
+			"name": "My Groups",
+			"short_name": "Groups",
+			"description": "View your expense groups",
+			"url": "/groups",
+			"icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+		}
+	]
 }

@@ -16,22 +16,48 @@ export class EmailService {
   private templates: Map<string, HandlebarsTemplateDelegate> = new Map();
 
   constructor() {
+    const port = parseInt(process.env.SMTP_PORT || '465', 10);
+    const host = process.env.SMTP_HOST || 'smtpout.secureserver.net';
+
     this.transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: parseInt(process.env.SMTP_PORT || '587'),
-      secure: process.env.SMTP_PORT === '465',
+      host,
+      port,
+      secure: port === 465, // true for 465 (SSL), false for 587 (STARTTLS)
       auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS,
       },
+      // network/timeouts
+      connectionTimeout: 10_000, // 10s
+      greetingTimeout: 10_000,
+      socketTimeout: 10_000,
+      tls: {
+        // only set to false temporarily for debugging TLS cert issues
+        rejectUnauthorized: process.env.SMTP_TLS_REJECT_UNAUTHORIZED !== 'false',
+      },
     });
+
+    // Verify connection immediately and log clearly
+    this.transporter.verify()
+      .then(() => {
+        logger.info(`✅ SMTP: connected to ${host}:${port} (secure=${port === 465})`);
+      })
+      .catch((err) => {
+        // helpful, actionable log
+        logger.error(`❌ SMTP verify failed: host=${host} port=${port} user=${process.env.SMTP_USER}`);
+        logger.error(err);
+        logger.warn('⚠️  Email functionality will not work. Check your SMTP configuration.');
+        // don't throw here: you might want the app to start even if email is down.
+        // If you do want to crash, uncomment:
+        // throw err;
+      });
 
     // Compile templates
     this.compileTemplates();
   }
 
   private compileTemplates(): void {
-    const templates = ['magic-link', 'invite', 'settlement-reminder'];
+    const templates = ['magic-link', 'invite', 'settlement-reminder', 'welcome'];
 
     templates.forEach((templateName) => {
       try {
@@ -121,6 +147,21 @@ export class EmailService {
     });
   }
 
+  async sendWelcomeEmail(email: string, name: string): Promise<void> {
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+
+    await this.sendEmail({
+      to: email,
+      subject: 'Welcome to TableSplit! 🎉',
+      template: 'welcome',
+      context: {
+        name,
+        frontendUrl,
+        dashboardUrl: `${frontendUrl}/groups`,
+      },
+    });
+  }
+
   private getFallbackTemplate(templateName: string, context: Record<string, any>): string {
     // Fallback HTML templates
     if (templateName === 'magic-link') {
@@ -157,6 +198,49 @@ export class EmailService {
           <p>Pull up a seat at the table and start tracking shared expenses together.</p>
           <div style="text-align: center; margin: 30px 0;">
             <a href="${context.joinLink}" style="display: inline-block; padding: 12px 24px; background: #ffd700; color: #000; text-decoration: none; border-radius: 8px; font-weight: bold;">Join the Table</a>
+          </div>
+        </body>
+        </html>
+      `;
+    }
+
+    if (templateName === 'welcome') {
+      return `
+        <!DOCTYPE html>
+        <html>
+        <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;">
+          <div style="background-color: white; border-radius: 12px; padding: 40px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <div style="text-align: center; margin-bottom: 30px;">
+              <div style="display: inline-block; width: 80px; height: 80px; background: linear-gradient(135deg, #10b981, #1a4d2e); border-radius: 50%; margin-bottom: 20px; display: flex; align-items: center; justify-content: center;">
+                <span style="font-size: 36px;">🎰</span>
+              </div>
+              <h1 style="color: #1a4d2e; margin: 0; font-size: 28px;">Welcome to TableSplit!</h1>
+            </div>
+
+            <p style="font-size: 18px; color: #333; margin-bottom: 20px;">Hi ${context.name}! 👋</p>
+
+            <p style="color: #666; line-height: 1.6;">
+              Thanks for joining TableSplit! We're excited to help you track and split expenses with friends, roommates, or colleagues.
+            </p>
+
+            <div style="background-color: #f0fdf4; border-left: 4px solid #10b981; padding: 20px; margin: 30px 0; border-radius: 4px;">
+              <h3 style="color: #1a4d2e; margin-top: 0;">Getting Started:</h3>
+              <ul style="color: #666; line-height: 1.8; margin: 0;">
+                <li>Create or join a group</li>
+                <li>Add expenses and split them fairly</li>
+                <li>Track who owes what in real-time</li>
+                <li>Settle up easily with UPI, cash, or bank transfer</li>
+              </ul>
+            </div>
+
+            <div style="text-align: center; margin: 40px 0;">
+              <a href="${context.dashboardUrl}" style="display: inline-block; padding: 16px 32px; background: linear-gradient(135deg, #10b981, #1a4d2e); color: white; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">Go to Dashboard</a>
+            </div>
+
+            <p style="color: #999; font-size: 14px; text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee;">
+              Need help? Just reply to this email and we'll get back to you.<br>
+              Happy splitting! 🎉
+            </p>
           </div>
         </body>
         </html>

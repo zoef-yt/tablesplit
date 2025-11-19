@@ -1,6 +1,7 @@
 import mongoose, { Document, Schema, Types } from 'mongoose';
 
 export interface IBalance extends Document {
+  _id: Types.ObjectId;
   groupId: Types.ObjectId;
   userId: Types.ObjectId;
   balance: number; // positive = owed TO user, negative = user owes
