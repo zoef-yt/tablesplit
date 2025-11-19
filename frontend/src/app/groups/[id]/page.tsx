@@ -51,7 +51,7 @@ import {
 } from "@/components/ui/form";
 import { formatCurrency } from "@/lib/utils";
 import { SettlementPanel } from "@/components/SettlementPanel";
-import { SettlementHistory } from "@/components/SettlementHistory";
+import { Timeline } from "@/components/Timeline";
 import { ExpenseDetailModal } from "@/components/ExpenseDetailModal";
 import { Navigation } from "@/components/Navigation";
 import { GroupSettings } from "@/components/GroupSettings";
@@ -559,7 +559,7 @@ export default function GroupDetailPage() {
 										: "text-gray-400 hover:text-white hover:bg-gray-800/30"
 								}`}
 							>
-								History ({settlementHistory.length})
+								Timeline ({expenses.length + settlementHistory.length})
 							</button>
 						</div>
 
@@ -575,7 +575,8 @@ export default function GroupDetailPage() {
 									onMarkAsPaid={handleMarkAsPaid}
 								/>
 							) : (
-								<SettlementHistory
+								<Timeline
+									expenses={expenses}
 									settlements={settlementHistory}
 									users={usersLookup}
 									currentUserId={user._id}
