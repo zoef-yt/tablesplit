@@ -492,6 +492,84 @@ export class ExpenseService {
   }
 
   /**
+   * Recalculate all balances from scratch
+   */
+  async recalculateBalances(userId: string, groupId: string): Promise<{
+    oldBalances: IBalance[];
+    newBalances: IBalance[];
+    fixed: boolean;
+  }> {
+    const group = await Group.findById(groupId);
+
+    if (!group) {
+      throw new NotFoundError('Group not found');
+    }
+
+    // Verify user is member
+    const isMember = group.members.some((m) => m.userId.toString() === userId);
+    if (!isMember) {
+      throw new ForbiddenError('You are not a member of this group');
+    }
+
+    // Get old balances
+    const oldBalances = await this.getGroupBalances(userId, groupId);
+
+    // Get all expenses
+    const expenses = await Expense.find({ groupId }).sort({ createdAt: 1 });
+
+    // Calculate fresh balances
+    const userBalances = new Map<string, number>();
+
+    for (const expense of expenses) {
+      const paidById = expense.paidBy.toString();
+
+      for (const split of expense.splits) {
+        const splitUserId = split.userId.toString();
+
+        if (!userBalances.has(splitUserId)) {
+          userBalances.set(splitUserId, 0);
+        }
+
+        if (splitUserId === paidById) {
+          // Payer: balance increases by (total - their share)
+          const netChange = expense.amount - split.amount;
+          userBalances.set(splitUserId, userBalances.get(splitUserId)! + netChange);
+        } else {
+          // Others: balance decreases by their share
+          userBalances.set(splitUserId, userBalances.get(splitUserId)! - split.amount);
+        }
+      }
+    }
+
+    // Update all balances in database
+    const updates = [];
+    for (const [userId, balance] of userBalances.entries()) {
+      updates.push(
+        Balance.findOneAndUpdate(
+          { groupId, userId },
+          { balance, lastUpdated: new Date() },
+          { upsert: true, new: true }
+        )
+      );
+    }
+
+    await Promise.all(updates);
+
+    // Get new balances
+    const newBalances = await this.getGroupBalances(userId, groupId);
+
+    logger.info(`Recalculated balances for group ${groupId}`);
+    logger.info(`Old balances: ${JSON.stringify(oldBalances.map(b => ({ userId: b.userId, balance: b.balance })))}`);
+    logger.info(`New balances: ${JSON.stringify(newBalances.map(b => ({ userId: b.userId, balance: b.balance })))}`);
+
+    return {
+      oldBalances,
+      newBalances,
+      fixed: true
+    };
+  }
+
+  /**
    * Get analytics for a group
    */
   async getGroupAnalytics(userId: string, groupId: string): Promise<{

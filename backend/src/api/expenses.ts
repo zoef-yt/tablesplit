@@ -305,8 +305,36 @@ router.get('/group/:groupId/debug', async (req: AuthRequest, res: Response, next
           from: s.from,
           to: s.to,
           amount: s.amount
-        }))
+        })),
+        mismatch: Object.values(userBalances).some(u => {
+          const dbBalance = balances.find(b => {
+            const userObj = b.userId as any;
+            const userId = userObj?._id?.toString() || userObj?.toString() || '';
+            return userId === Object.keys(userBalances).find(k => userBalances[k].name === u.name);
+          });
+          return dbBalance ? Math.abs(dbBalance.balance - u.balance) > 0.01 : true;
+        })
       }
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * POST /api/expenses/group/:groupId/recalculate-balances
+ * Recalculate all balances from scratch (fix corrupted balances)
+ */
+router.post('/group/:groupId/recalculate-balances', async (req: AuthRequest, res: Response, next) => {
+  try {
+    const { groupId } = req.params;
+
+    const result = await expenseService.recalculateBalances(req.userId!, groupId);
+
+    res.json({
+      success: true,
+      message: 'Balances recalculated successfully',
+      data: result
     });
   } catch (error) {
     next(error);
