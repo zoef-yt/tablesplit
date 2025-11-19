@@ -2,7 +2,7 @@
 
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import {
 	ArrowLeft,
@@ -79,6 +79,9 @@ export default function GroupDetailPage() {
 	const [isExpenseDetailOpen, setIsExpenseDetailOpen] = useState(false);
 	const [showSettlementHistory, setShowSettlementHistory] = useState(false);
 
+	// Track if we've emitted an activity (to avoid emitting null on initial render)
+	const hasEmittedActivityRef = useRef(false);
+
 	const groupId = params.id as string;
 
 	const { data: group, isLoading: groupLoading } = useGroup(groupId);
@@ -106,9 +109,11 @@ export default function GroupDetailPage() {
 		const timer = setTimeout(() => {
 			if (isExpenseDialogOpen) {
 				emitUserActivity(groupId, "Adding an expense...");
-			} else if (!isExpenseDetailOpen) {
-				// Only clear if expense detail is also closed
+				hasEmittedActivityRef.current = true;
+			} else if (!isExpenseDetailOpen && hasEmittedActivityRef.current) {
+				// Only clear if we previously emitted an activity and expense detail is also closed
 				emitUserActivity(groupId, null);
+				hasEmittedActivityRef.current = false;
 			}
 		}, 200);
 

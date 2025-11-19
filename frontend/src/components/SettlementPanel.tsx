@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
 	DollarSign,
@@ -54,6 +54,9 @@ export function SettlementPanel({
 	const [customAmount, setCustomAmount] = useState("");
 	const [useCustomAmount, setUseCustomAmount] = useState(false);
 
+	// Track if we've emitted an activity (to avoid emitting null on initial render)
+	const hasEmittedActivityRef = useRef(false);
+
 	// Track user activity when making a payment
 	useEffect(() => {
 		// Small delay to ensure socket has joined group
@@ -64,8 +67,11 @@ export function SettlementPanel({
 					groupId,
 					`Making a payment to ${payee?.name || "someone"}...`
 				);
-			} else if (!showPaymentMethodSheet) {
+				hasEmittedActivityRef.current = true;
+			} else if (!showPaymentMethodSheet && hasEmittedActivityRef.current) {
+				// Only clear if we previously emitted an activity
 				emitUserActivity(groupId, null);
+				hasEmittedActivityRef.current = false;
 			}
 		}, 200);
 
