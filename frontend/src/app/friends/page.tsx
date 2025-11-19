@@ -29,6 +29,7 @@ import {
 } from "@/lib/hooks/useFriends";
 import { useAuthStore } from "@/lib/store/auth";
 import { api } from "@/lib/api";
+import { toast } from "sonner";
 import type { FriendRequest, User } from "@/types";
 
 export default function FriendsPage() {
@@ -90,6 +91,7 @@ export default function FriendsPage() {
 				setShowInviteDialog(true);
 				setShowAddFriend(false);
 			} else {
+				toast.error(error?.response?.data?.error || 'Failed to send friend request');
 				console.error(error);
 			}
 		}
@@ -98,12 +100,12 @@ export default function FriendsPage() {
 	const handleSendInvite = async () => {
 		try {
 			const response = await api.post('/friends/invite', { email: inviteEmail });
-			alert(response.data.message || 'Invite sent successfully!');
+			toast.success(response.data.message || 'Invite sent successfully!');
 			setShowInviteDialog(false);
 			setInviteEmail("");
 			setEmail("");
 		} catch (error) {
-			alert('Failed to send invite. Please try again.');
+			toast.error('Failed to send invite. Please try again.');
 			console.error(error);
 		}
 	};

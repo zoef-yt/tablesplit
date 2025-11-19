@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api';
+import { toast } from 'sonner';
 import type { FriendRequest, User, UserWithFriendshipStatus } from '@/types';
 
 /**
@@ -53,6 +54,7 @@ export function useSendFriendRequest() {
       return response.data;
     },
     onSuccess: () => {
+      toast.success('Friend request sent!');
       // Invalidate sent requests to show the new one
       queryClient.invalidateQueries({ queryKey: ['friendRequests', 'sent'] });
     },
@@ -71,9 +73,13 @@ export function useAcceptFriendRequest() {
       return response.data;
     },
     onSuccess: () => {
+      toast.success('Friend request accepted!');
       // Invalidate both friends and pending requests
       queryClient.invalidateQueries({ queryKey: ['friends'] });
       queryClient.invalidateQueries({ queryKey: ['friendRequests', 'pending'] });
+    },
+    onError: () => {
+      toast.error('Failed to accept friend request');
     },
   });
 }
@@ -90,8 +96,12 @@ export function useDeclineFriendRequest() {
       return response.data;
     },
     onSuccess: () => {
+      toast.success('Friend request declined');
       // Invalidate pending requests
       queryClient.invalidateQueries({ queryKey: ['friendRequests', 'pending'] });
+    },
+    onError: () => {
+      toast.error('Failed to decline friend request');
     },
   });
 }
@@ -108,8 +118,12 @@ export function useCancelFriendRequest() {
       return response.data;
     },
     onSuccess: () => {
+      toast.success('Friend request cancelled');
       // Invalidate sent requests
       queryClient.invalidateQueries({ queryKey: ['friendRequests', 'sent'] });
+    },
+    onError: () => {
+      toast.error('Failed to cancel friend request');
     },
   });
 }
@@ -126,8 +140,12 @@ export function useRemoveFriend() {
       return response.data;
     },
     onSuccess: () => {
+      toast.success('Friend removed');
       // Invalidate friends list
       queryClient.invalidateQueries({ queryKey: ['friends'] });
+    },
+    onError: () => {
+      toast.error('Failed to remove friend');
     },
   });
 }
