@@ -434,8 +434,8 @@ export class ExpenseService {
    */
   private async updateBalances(
     groupId: string,
-    paidBy: string,
-    splits: Array<{ userId: string; amount: number }>
+    _paidBy: string,
+    _splits: Array<{ userId: string; amount: number }>
   ): Promise<IBalance[]> {
     // Instead of incremental updates, recalculate all balances from scratch
     // This prevents race conditions and ensures accuracy
@@ -489,8 +489,8 @@ export class ExpenseService {
    */
   private async reverseBalances(
     groupId: string,
-    paidBy: string,
-    splits: Array<{ userId: string; amount: number }>
+    _paidBy: string,
+    _splits: Array<{ userId: string; amount: number }>
   ): Promise<void> {
     // After reversal, we'll do a full recalculation anyway
     // So this is just a placeholder - the real work happens in updateBalances
