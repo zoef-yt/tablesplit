@@ -252,7 +252,7 @@ export class ExpenseService {
       throw new ForbiddenError('You are not a member of this group');
     }
 
-    // Reverse the balance changes
+    // Reverse the balance changes by recalculating from scratch after deletion
     const splitsAsStrings = expense.splits.map(s => ({
       userId: s.userId.toString(),
       amount: s.amount
@@ -262,7 +262,40 @@ export class ExpenseService {
     // Delete the expense
     await Expense.findByIdAndDelete(expenseId);
 
-    logger.info(`Expense deleted: ${expenseId} from group ${groupId}`);
+    // Recalculate ALL balances from scratch
+    const expenses = await Expense.find({ groupId });
+    const userBalances = new Map<string, number>();
+
+    for (const exp of expenses) {
+      const expPaidBy = exp.paidBy.toString();
+      for (const split of exp.splits) {
+        const splitUserId = split.userId.toString();
+        if (!userBalances.has(splitUserId)) {
+          userBalances.set(splitUserId, 0);
+        }
+        if (splitUserId === expPaidBy) {
+          const netChange = exp.amount - split.amount;
+          userBalances.set(splitUserId, userBalances.get(splitUserId)! + netChange);
+        } else {
+          userBalances.set(splitUserId, userBalances.get(splitUserId)! - split.amount);
+        }
+      }
+    }
+
+    // Update balances
+    const balanceUpdates = [];
+    for (const [userId, balance] of userBalances.entries()) {
+      balanceUpdates.push(
+        Balance.findOneAndUpdate(
+          { groupId, userId },
+          { balance, lastUpdated: new Date() },
+          { upsert: true }
+        )
+      );
+    }
+    await Promise.all(balanceUpdates);
+
+    logger.info(`Expense deleted: ${expenseId} from group ${groupId} - balances recalculated`);
 
     // Return updated balances
     const updatedBalances = await this.getGroupBalances(userId, groupId);
@@ -331,15 +364,41 @@ export class ExpenseService {
       }));
     }
 
-    // Apply new balance changes
-    const newSplitsAsStrings = expense.splits.map(s => ({
-      userId: s.userId.toString(),
-      amount: s.amount
-    }));
-    await this.updateBalances(groupId, expense.paidBy.toString(), newSplitsAsStrings);
-
-    // Save expense
+    // Save expense first
     await expense.save();
+
+    // Recalculate ALL balances from scratch (more reliable than incremental)
+    const expenses = await Expense.find({ groupId });
+    const userBalances = new Map<string, number>();
+
+    for (const exp of expenses) {
+      const expPaidBy = exp.paidBy.toString();
+      for (const split of exp.splits) {
+        const splitUserId = split.userId.toString();
+        if (!userBalances.has(splitUserId)) {
+          userBalances.set(splitUserId, 0);
+        }
+        if (splitUserId === expPaidBy) {
+          const netChange = exp.amount - split.amount;
+          userBalances.set(splitUserId, userBalances.get(splitUserId)! + netChange);
+        } else {
+          userBalances.set(splitUserId, userBalances.get(splitUserId)! - split.amount);
+        }
+      }
+    }
+
+    // Update balances
+    const balanceUpdates = [];
+    for (const [userId, balance] of userBalances.entries()) {
+      balanceUpdates.push(
+        Balance.findOneAndUpdate(
+          { groupId, userId },
+          { balance, lastUpdated: new Date() },
+          { upsert: true }
+        )
+      );
+    }
+    await Promise.all(balanceUpdates);
 
     // Populate expense with user information
     await expense.populate('paidBy', 'name email avatar');
@@ -371,77 +430,71 @@ export class ExpenseService {
 
   /**
    * Update balances after expense creation
+   * Now uses a more reliable approach: recalculate from all expenses
    */
   private async updateBalances(
     groupId: string,
     paidBy: string,
     splits: Array<{ userId: string; amount: number }>
   ): Promise<IBalance[]> {
-    const updates = [];
+    // Instead of incremental updates, recalculate all balances from scratch
+    // This prevents race conditions and ensures accuracy
+    const expenses = await Expense.find({ groupId });
+    const userBalances = new Map<string, number>();
 
-    for (const split of splits) {
-      if (split.userId === paidBy) {
-        // Payer's balance increases by (total - their share)
-        const netChange = splits.reduce((sum, s) => sum + s.amount, 0) - split.amount;
-        updates.push(
-          Balance.findOneAndUpdate(
-            { groupId, userId: split.userId },
-            { $inc: { balance: netChange }, lastUpdated: new Date() },
-            { upsert: true, new: true }
-          )
-        );
-      } else {
-        // Others' balance decreases by their share
-        updates.push(
-          Balance.findOneAndUpdate(
-            { groupId, userId: split.userId },
-            { $inc: { balance: -split.amount }, lastUpdated: new Date() },
-            { upsert: true, new: true }
-          )
-        );
+    // Calculate balances from all expenses
+    for (const expense of expenses) {
+      const expensePaidBy = expense.paidBy.toString();
+
+      for (const split of expense.splits) {
+        const splitUserId = split.userId.toString();
+
+        if (!userBalances.has(splitUserId)) {
+          userBalances.set(splitUserId, 0);
+        }
+
+        if (splitUserId === expensePaidBy) {
+          // Payer: balance increases by (total - their share)
+          const netChange = expense.amount - split.amount;
+          userBalances.set(splitUserId, userBalances.get(splitUserId)! + netChange);
+        } else {
+          // Others: balance decreases by their share
+          userBalances.set(splitUserId, userBalances.get(splitUserId)! - split.amount);
+        }
       }
     }
 
+    // Update all balances in database
+    const updates = [];
+    for (const [userId, balance] of userBalances.entries()) {
+      updates.push(
+        Balance.findOneAndUpdate(
+          { groupId, userId },
+          { balance, lastUpdated: new Date() },
+          { upsert: true, new: true }
+        ).populate('userId', 'name email avatar')
+      );
+    }
+
     const results = await Promise.all(updates);
+
+    logger.info(`Updated balances for group ${groupId} using full recalculation`);
+
     return results;
   }
 
   /**
    * Reverse balances (for expense deletion or before update)
+   * Now uses full recalculation instead of incremental changes
    */
   private async reverseBalances(
     groupId: string,
     paidBy: string,
     splits: Array<{ userId: string; amount: number }>
   ): Promise<void> {
-    const updates = [];
-
-    for (const split of splits) {
-      const userId = split.userId;
-
-      if (userId === paidBy) {
-        // Reverse payer's balance (subtract the net change)
-        const netChange = splits.reduce((sum, s) => sum + s.amount, 0) - split.amount;
-        updates.push(
-          Balance.findOneAndUpdate(
-            { groupId, userId },
-            { $inc: { balance: -netChange }, lastUpdated: new Date() },
-            { upsert: true }
-          )
-        );
-      } else {
-        // Reverse others' balance (add back their share)
-        updates.push(
-          Balance.findOneAndUpdate(
-            { groupId, userId },
-            { $inc: { balance: split.amount }, lastUpdated: new Date() },
-            { upsert: true }
-          )
-        );
-      }
-    }
-
-    await Promise.all(updates);
+    // After reversal, we'll do a full recalculation anyway
+    // So this is just a placeholder - the real work happens in updateBalances
+    logger.info(`Preparing to recalculate balances after expense modification in group ${groupId}`);
   }
 
   /**
