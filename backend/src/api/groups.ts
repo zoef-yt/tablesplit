@@ -169,7 +169,7 @@ router.post('/:id/members', async (req: AuthRequest, res: Response, next) => {
 
     const group = await groupService.addMember(req.userId!, id, userId);
 
-    res.json({
+    return res.json({
       success: true,
       data: group,
     });
