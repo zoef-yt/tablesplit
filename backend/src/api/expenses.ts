@@ -234,4 +234,78 @@ router.get('/group/:groupId/analytics', async (req: AuthRequest, res: Response, 
   }
 });
 
+/**
+ * GET /api/expenses/group/:groupId/debug
+ * Debug endpoint to see all expenses and calculations
+ */
+router.get('/group/:groupId/debug', async (req: AuthRequest, res: Response, next) => {
+  try {
+    const { groupId } = req.params;
+
+    const expenses = await expenseService.getGroupExpenses(req.userId!, groupId);
+    const balances = await expenseService.getGroupBalances(req.userId!, groupId);
+    const settlements = await expenseService.calculateSettlement(req.userId!, groupId);
+
+    // Manual calculation
+    const userBalances: Record<string, { name: string; balance: number }> = {};
+
+    for (const expense of expenses) {
+      const paidById = typeof expense.paidBy === 'object' && expense.paidBy?._id
+        ? expense.paidBy._id.toString()
+        : expense.paidBy.toString();
+
+      for (const split of expense.splits) {
+        const userId = typeof split.userId === 'object' && split.userId?._id
+          ? split.userId._id.toString()
+          : split.userId.toString();
+        const userName = typeof split.userId === 'object' && split.userId?.name
+          ? split.userId.name
+          : 'Unknown';
+
+        if (!userBalances[userId]) {
+          userBalances[userId] = { name: userName, balance: 0 };
+        }
+
+        if (userId === paidById) {
+          // Payer: balance increases by (total - their share)
+          const netChange = expense.amount - split.amount;
+          userBalances[userId].balance += netChange;
+        } else {
+          // Others: balance decreases by their share
+          userBalances[userId].balance -= split.amount;
+        }
+      }
+    }
+
+    res.json({
+      success: true,
+      data: {
+        expenses: expenses.map(e => ({
+          description: e.description,
+          amount: e.amount,
+          paidBy: typeof e.paidBy === 'object' && e.paidBy?.name ? e.paidBy.name : 'Unknown',
+          splits: e.splits.map(s => ({
+            user: typeof s.userId === 'object' && s.userId?.name ? s.userId.name : 'Unknown',
+            amount: s.amount,
+            percentage: s.percentage
+          })),
+          date: e.createdAt
+        })),
+        balances: balances.map(b => ({
+          user: typeof b.userId === 'object' && b.userId?.name ? b.userId.name : 'Unknown',
+          balance: b.balance
+        })),
+        calculatedBalances: Object.values(userBalances),
+        settlements: settlements.map(s => ({
+          from: s.from,
+          to: s.to,
+          amount: s.amount
+        }))
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;
