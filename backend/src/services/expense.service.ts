@@ -117,13 +117,22 @@ export class ExpenseService {
   async calculateSettlement(userId: string, groupId: string): Promise<CalculatedSettlement[]> {
     const balances = await this.getGroupBalances(userId, groupId);
 
-    return this.simplifyDebts(
+    logger.info(`Calculating settlements for group ${groupId}`);
+    logger.info(`Balances: ${JSON.stringify(balances.map(b => ({
+      userId: typeof b.userId === 'object' && b.userId._id ? b.userId._id.toString() : b.userId.toString(),
+      balance: b.balance
+    })))}`);
+
+    const settlements = this.simplifyDebts(
       balances.map((b) => ({
         // Extract _id from populated userId or use string directly
         userId: typeof b.userId === 'object' && b.userId._id ? b.userId._id.toString() : b.userId.toString(),
         balance: b.balance,
       }))
     );
+
+    logger.info(`Calculated settlements: ${JSON.stringify(settlements)}`);
+    return settlements;
   }
 
   /**
@@ -441,9 +450,14 @@ export class ExpenseService {
   private simplifyDebts(
     balances: Array<{ userId: string; balance: number }>
   ): CalculatedSettlement[] {
+    logger.info(`Starting debt simplification with balances: ${JSON.stringify(balances)}`);
+
     const creditors = balances.filter((b) => b.balance > 0.01);
     const debtors = balances.filter((b) => b.balance < -0.01);
     const transactions: CalculatedSettlement[] = [];
+
+    logger.info(`Creditors (owed money): ${JSON.stringify(creditors)}`);
+    logger.info(`Debtors (owe money): ${JSON.stringify(debtors)}`);
 
     // Sort by amount (descending)
     creditors.sort((a, b) => b.balance - a.balance);
@@ -458,6 +472,8 @@ export class ExpenseService {
 
       const amount = Math.min(creditor.balance, Math.abs(debtor.balance));
 
+      logger.info(`Creating transaction: ${debtor.userId} -> ${creditor.userId}: ₹${amount.toFixed(2)}`);
+
       transactions.push({
         from: debtor.userId,
         to: creditor.userId,
@@ -471,6 +487,7 @@ export class ExpenseService {
       if (Math.abs(debtor.balance) < 0.01) j++;
     }
 
+    logger.info(`Final settlements: ${JSON.stringify(transactions)}`);
     return transactions;
   }
 
