@@ -28,6 +28,7 @@ import {
 	useRemoveFriend,
 } from "@/lib/hooks/useFriends";
 import { useAuthStore } from "@/lib/store/auth";
+import { api } from "@/lib/api";
 import type { FriendRequest, User } from "@/types";
 
 export default function FriendsPage() {
@@ -40,6 +41,8 @@ export default function FriendsPage() {
 	);
 	const [email, setEmail] = useState("");
 	const [showAddFriend, setShowAddFriend] = useState(false);
+	const [showInviteDialog, setShowInviteDialog] = useState(false);
+	const [inviteEmail, setInviteEmail] = useState("");
 
 	const { data: friends = [], isLoading: friendsLoading } = useFriends();
 	const { data: pendingRequests = [], isLoading: pendingLoading } =
@@ -79,8 +82,28 @@ export default function FriendsPage() {
 			setEmail("");
 			setShowAddFriend(false);
 			setActiveTab("sent");
+		} catch (error: any) {
+			// Check if this is a "user not found" error
+			if (error?.response?.status === 404 && error?.response?.data?.action === 'invite') {
+				// Show invite dialog
+				setInviteEmail(email);
+				setShowInviteDialog(true);
+				setShowAddFriend(false);
+			} else {
+				console.error(error);
+			}
+		}
+	};
+
+	const handleSendInvite = async () => {
+		try {
+			const response = await api.post('/friends/invite', { email: inviteEmail });
+			alert(response.data.message || 'Invite sent successfully!');
+			setShowInviteDialog(false);
+			setInviteEmail("");
+			setEmail("");
 		} catch (error) {
-			// Error is already handled by React Query
+			alert('Failed to send invite. Please try again.');
 			console.error(error);
 		}
 	};
@@ -212,6 +235,69 @@ export default function FriendsPage() {
 						)}
 					</AnimatePresence>
 				</div>
+
+				{/* Invite Dialog */}
+				<AnimatePresence>
+					{showInviteDialog && (
+						<motion.div
+							initial={{ opacity: 0 }}
+							animate={{ opacity: 1 }}
+							exit={{ opacity: 0 }}
+							className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+							onClick={() => setShowInviteDialog(false)}
+						>
+							<motion.div
+								initial={{ opacity: 0, scale: 0.95, y: 20 }}
+								animate={{ opacity: 1, scale: 1, y: 0 }}
+								exit={{ opacity: 0, scale: 0.95, y: 20 }}
+								onClick={(e) => e.stopPropagation()}
+								className="bg-gray-900 border border-gray-700 rounded-xl p-6 max-w-md w-full"
+							>
+								<div className="text-center mb-4">
+									<div className="w-16 h-16 rounded-full bg-yellow-500/20 flex items-center justify-center mx-auto mb-4">
+										<Mail className="w-8 h-8 text-yellow-400" />
+									</div>
+									<h3 className="text-xl font-bold text-white mb-2">
+										User Not Found
+									</h3>
+									<p className="text-gray-400 text-sm">
+										<span className="text-white font-medium">{inviteEmail}</span> isn&apos;t on TableSplit yet.
+									</p>
+								</div>
+
+								<div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4 mb-6">
+									<p className="text-gray-300 text-sm text-center">
+										Would you like to send them an invitation to join TableSplit?
+										They&apos;ll receive an email with a signup link.
+									</p>
+								</div>
+
+								<div className="flex gap-3">
+									<Button
+										type="button"
+										variant="outline"
+										onClick={() => {
+											setShowInviteDialog(false);
+											setInviteEmail("");
+											setEmail("");
+										}}
+										className="flex-1 border-gray-700"
+									>
+										Cancel
+									</Button>
+									<Button
+										type="button"
+										onClick={handleSendInvite}
+										className="flex-1 bg-yellow-600 hover:bg-yellow-700"
+									>
+										<Mail className="w-4 h-4 mr-2" />
+										Send Invite
+									</Button>
+								</div>
+							</motion.div>
+						</motion.div>
+					)}
+				</AnimatePresence>
 
 				{/* Tabs */}
 				<div className="flex gap-2 mb-6 bg-gray-800/50 border border-gray-700 rounded-xl p-2">

@@ -11,7 +11,7 @@ import {
 	X,
 	Users,
 } from "lucide-react";
-import { Expense, Settlement as SettlementType, User } from "@/types";
+import { Expense, SettlementRecord as SettlementType, User } from "@/types";
 import { formatCurrency } from "@/lib/utils";
 import {
 	Dialog,

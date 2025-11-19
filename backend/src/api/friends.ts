@@ -1,7 +1,9 @@
 import { Router } from 'express';
 import { friendsService } from '../services/friends.service';
+import { emailService } from '../services/email.service';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
 import { logger } from '../utils/logger';
+import { User } from '../models/User';
 
 const router = Router();
 
@@ -25,8 +27,54 @@ router.post('/request', async (req: AuthRequest, res) => {
     return res.status(201).json(friendRequest);
   } catch (error) {
     logger.error('Error sending friend request:', error);
+
+    // Check if user not found - suggest sending invite instead
+    if (error instanceof Error && error.message === 'User not found with that email address') {
+      return res.status(404).json({
+        error: 'User not found',
+        message: 'This email is not registered on TableSplit yet.',
+        action: 'invite',
+        email: req.body.email,
+      });
+    }
+
     return res.status(400).json({
       error: error instanceof Error ? error.message : 'Failed to send friend request',
+    });
+  }
+});
+
+/**
+ * Send platform invite
+ * POST /api/friends/invite
+ */
+router.post('/invite', async (req: AuthRequest, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
+    // Get current user's name
+    const currentUser = await User.findById(req.userId);
+    if (!currentUser) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Send platform invite email
+    await emailService.sendPlatformInvite(email, currentUser.name);
+
+    logger.info(`Platform invite sent from ${currentUser.email} to ${email}`);
+
+    return res.json({
+      success: true,
+      message: `Invitation sent to ${email}!`,
+    });
+  } catch (error) {
+    logger.error('Error sending platform invite:', error);
+    return res.status(500).json({
+      error: 'Failed to send invite. Please try again later.',
     });
   }
 });
