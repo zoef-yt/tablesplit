@@ -55,6 +55,7 @@ import { Timeline } from "@/components/Timeline";
 import { ExpenseDetailModal } from "@/components/ExpenseDetailModal";
 import { Navigation } from "@/components/Navigation";
 import { GroupSettings } from "@/components/GroupSettings";
+import { AddFriendToGroupDialog } from "@/components/AddFriendToGroupDialog";
 import type { User, Expense } from "@/types";
 
 const expenseSchema = z.object({
@@ -307,6 +308,12 @@ export default function GroupDetailPage() {
 							<TrendingUp className="w-6 h-6" />
 						</Link>
 						<GroupSettings group={group} currentUserId={user._id} />
+						<AddFriendToGroupDialog
+							groupId={groupId}
+							currentMembers={group.members.map((m) =>
+								typeof m.userId === "object" && m.userId ? m.userId._id : m.userId
+							)}
+						/>
 						<Dialog
 							open={isInviteDialogOpen}
 							onOpenChange={setIsInviteDialogOpen}
@@ -315,7 +322,7 @@ export default function GroupDetailPage() {
 								<button
 									onClick={() => setInviteLink("")}
 									className="p-2 hover:bg-gray-800 rounded-full transition-colors text-primary-500"
-									title="Invite members"
+									title="Generate invite link"
 								>
 									<UserPlus className="w-6 h-6" />
 								</button>

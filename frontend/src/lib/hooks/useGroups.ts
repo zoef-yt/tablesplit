@@ -126,6 +126,28 @@ export function useLeaveGroup() {
 	});
 }
 
+export function useAddMemberToGroup(groupId: string) {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: async (userId: string) => {
+			const response = await apiHelpers.post<Group>(
+				`/groups/${groupId}/members`,
+				{ userId },
+			);
+			return response.data!;
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ["groups", groupId] });
+			queryClient.invalidateQueries({ queryKey: ["groups"] });
+			toast.success("Friend added to group! 🎉");
+		},
+		onError: (error: Error) => {
+			toast.error(`Failed to add friend: ${error.message}`);
+		},
+	});
+}
+
 export function useRemoveMember(groupId: string) {
 	const queryClient = useQueryClient();
 
