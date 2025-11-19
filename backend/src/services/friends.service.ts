@@ -51,7 +51,9 @@ export class FriendsService {
     logger.info(`Friend request sent from ${fromUserId} to ${toUser._id}`);
 
     // Populate and return
-    return friendRequest.populate(['from', 'to'], 'name email avatar');
+    await friendRequest.populate('from', 'name email avatar');
+    await friendRequest.populate('to', 'name email avatar');
+    return friendRequest;
   }
 
   /**
@@ -87,7 +89,9 @@ export class FriendsService {
 
     logger.info(`Friend request ${requestId} accepted, friendship created between ${user1} and ${user2}`);
 
-    return friendship.populate(['user1', 'user2'], 'name email avatar');
+    await friendship.populate('user1', 'name email avatar');
+    await friendship.populate('user2', 'name email avatar');
+    return friendship;
   }
 
   /**
@@ -215,14 +219,15 @@ export class FriendsService {
   /**
    * Search for users by email (only returns friends or users with pending requests)
    */
-  async searchUsers(currentUserId: string, searchQuery: string): Promise<Array<IUser & { friendshipStatus?: string }>> {
+  async searchUsers(currentUserId: string, searchQuery: string): Promise<Array<any>> {
     // Search for users by email
     const users = await User.find({
       email: { $regex: searchQuery, $options: 'i' },
       _id: { $ne: currentUserId }, // Exclude current user
     })
       .limit(10)
-      .select('name email avatar');
+      .select('name email avatar')
+      .lean(); // Use lean() to get plain objects
 
     // For each user, check friendship status
     const usersWithStatus = await Promise.all(
@@ -230,7 +235,7 @@ export class FriendsService {
         const isFriend = await this.areFriends(currentUserId, user._id.toString());
 
         if (isFriend) {
-          return { ...user.toObject(), friendshipStatus: 'friends' };
+          return { ...user, friendshipStatus: 'friends' };
         }
 
         // Check for pending request (either direction)
@@ -243,13 +248,13 @@ export class FriendsService {
 
         if (pendingRequest) {
           if (pendingRequest.from.toString() === currentUserId) {
-            return { ...user.toObject(), friendshipStatus: 'request_sent' };
+            return { ...user, friendshipStatus: 'request_sent' };
           } else {
-            return { ...user.toObject(), friendshipStatus: 'request_received' };
+            return { ...user, friendshipStatus: 'request_received' };
           }
         }
 
-        return { ...user.toObject(), friendshipStatus: 'none' };
+        return { ...user, friendshipStatus: 'none' };
       })
     );
 
