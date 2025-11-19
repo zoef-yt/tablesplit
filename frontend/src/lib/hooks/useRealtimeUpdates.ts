@@ -18,10 +18,14 @@ export function useRealtimeUpdates(groupId: string) {
 			expense: Expense;
 			updatedBalances: Balance[];
 		}) => {
-			queryClient.setQueryData(["expenses", groupId], (old: Expense[] = []) => [
-				data.expense,
-				...old,
-			]);
+			queryClient.setQueryData(["expenses", groupId], (old: Expense[] = []) => {
+				// Check if expense already exists to prevent duplicates
+				const exists = old.some((exp) => exp._id === data.expense._id);
+				if (exists) {
+					return old; // Don't add duplicate
+				}
+				return [data.expense, ...old];
+			});
 			queryClient.setQueryData(["balances", groupId], data.updatedBalances);
 			vibrate([10, 50, 10]);
 		};

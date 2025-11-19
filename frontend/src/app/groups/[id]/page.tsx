@@ -589,17 +589,13 @@ export default function GroupDetailPage() {
 				<div className="mb-20">
 					<div className="flex items-center justify-between mb-4">
 						<h2 className="text-xl font-bold text-white">Recent Expenses</h2>
-						<Dialog
-							open={isExpenseDialogOpen}
-							onOpenChange={setIsExpenseDialogOpen}
-						>
-							<DialogTrigger asChild>
-								<Button className="bg-primary-600 hover:bg-primary-700">
-									<Plus className="w-5 h-5 mr-2" />
-									Add Expense
-								</Button>
-							</DialogTrigger>
-							<DialogContent className="bg-gray-900 border-gray-800">
+					</div>
+
+					<Dialog
+						open={isExpenseDialogOpen}
+						onOpenChange={setIsExpenseDialogOpen}
+					>
+						<DialogContent className="bg-gray-900 border-gray-800">
 								<DialogHeader>
 									<DialogTitle className="text-white">
 										Add New Expense
@@ -755,9 +751,8 @@ export default function GroupDetailPage() {
 										</Button>
 									</form>
 								</Form>
-							</DialogContent>
-						</Dialog>
-					</div>
+						</DialogContent>
+					</Dialog>
 
 					{expenses.length === 0 ? (
 						<div className="text-center py-12 bg-gray-900/30 rounded-xl border border-gray-800">
@@ -847,6 +842,19 @@ export default function GroupDetailPage() {
 					groupId={groupId}
 					groupMembers={Object.values(usersLookup)}
 				/>
+
+				{/* Floating Add Expense Button */}
+				<motion.button
+					onClick={() => setIsExpenseDialogOpen(true)}
+					className="fixed bottom-6 right-6 bg-primary-600 hover:bg-primary-700 text-white rounded-full p-4 shadow-lg hover:shadow-xl transition-all z-50"
+					whileHover={{ scale: 1.1 }}
+					whileTap={{ scale: 0.95 }}
+					initial={{ scale: 0 }}
+					animate={{ scale: 1 }}
+					transition={{ type: "spring", stiffness: 260, damping: 20 }}
+				>
+					<Plus className="w-6 h-6" />
+				</motion.button>
 			</div>
 		</div>
 	);
