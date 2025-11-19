@@ -250,17 +250,13 @@ router.get('/group/:groupId/debug', async (req: AuthRequest, res: Response, next
     const userBalances: Record<string, { name: string; balance: number }> = {};
 
     for (const expense of expenses) {
-      const paidById = typeof expense.paidBy === 'object' && expense.paidBy?._id
-        ? expense.paidBy._id.toString()
-        : expense.paidBy.toString();
+      const paidByObj = expense.paidBy as any;
+      const paidById = paidByObj?._id?.toString() || paidByObj?.toString() || '';
 
       for (const split of expense.splits) {
-        const userId = typeof split.userId === 'object' && split.userId?._id
-          ? split.userId._id.toString()
-          : split.userId.toString();
-        const userName = typeof split.userId === 'object' && split.userId?.name
-          ? split.userId.name
-          : 'Unknown';
+        const userIdObj = split.userId as any;
+        const userId = userIdObj?._id?.toString() || userIdObj?.toString() || '';
+        const userName = userIdObj?.name || 'Unknown';
 
         if (!userBalances[userId]) {
           userBalances[userId] = { name: userName, balance: 0 };
@@ -280,21 +276,30 @@ router.get('/group/:groupId/debug', async (req: AuthRequest, res: Response, next
     res.json({
       success: true,
       data: {
-        expenses: expenses.map(e => ({
-          description: e.description,
-          amount: e.amount,
-          paidBy: typeof e.paidBy === 'object' && e.paidBy?.name ? e.paidBy.name : 'Unknown',
-          splits: e.splits.map(s => ({
-            user: typeof s.userId === 'object' && s.userId?.name ? s.userId.name : 'Unknown',
-            amount: s.amount,
-            percentage: s.percentage
-          })),
-          date: e.createdAt
-        })),
-        balances: balances.map(b => ({
-          user: typeof b.userId === 'object' && b.userId?.name ? b.userId.name : 'Unknown',
-          balance: b.balance
-        })),
+        expenses: expenses.map(e => {
+          const paidByObj = e.paidBy as any;
+          return {
+            description: e.description,
+            amount: e.amount,
+            paidBy: paidByObj?.name || 'Unknown',
+            splits: e.splits.map(s => {
+              const userObj = s.userId as any;
+              return {
+                user: userObj?.name || 'Unknown',
+                amount: s.amount,
+                percentage: s.percentage
+              };
+            }),
+            date: e.createdAt
+          };
+        }),
+        balances: balances.map(b => {
+          const userObj = b.userId as any;
+          return {
+            user: userObj?.name || 'Unknown',
+            balance: b.balance
+          };
+        }),
         calculatedBalances: Object.values(userBalances),
         settlements: settlements.map(s => ({
           from: s.from,
