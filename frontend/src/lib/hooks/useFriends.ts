@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '../api';
+import { api } from '../api';
 import type { FriendRequest, User, UserWithFriendshipStatus } from '@/types';
 
 /**
@@ -9,7 +9,7 @@ export function useFriends() {
   return useQuery({
     queryKey: ['friends'],
     queryFn: async (): Promise<User[]> => {
-      const response = await apiClient.get('/friends');
+      const response = await api.get('/friends');
       return response.data;
     },
   });
@@ -22,7 +22,7 @@ export function usePendingFriendRequests() {
   return useQuery({
     queryKey: ['friendRequests', 'pending'],
     queryFn: async (): Promise<FriendRequest[]> => {
-      const response = await apiClient.get('/friends/requests/pending');
+      const response = await api.get('/friends/requests/pending');
       return response.data;
     },
   });
@@ -35,7 +35,7 @@ export function useSentFriendRequests() {
   return useQuery({
     queryKey: ['friendRequests', 'sent'],
     queryFn: async (): Promise<FriendRequest[]> => {
-      const response = await apiClient.get('/friends/requests/sent');
+      const response = await api.get('/friends/requests/sent');
       return response.data;
     },
   });
@@ -49,7 +49,7 @@ export function useSendFriendRequest() {
 
   return useMutation({
     mutationFn: async (email: string): Promise<FriendRequest> => {
-      const response = await apiClient.post('/friends/request', { email });
+      const response = await api.post('/friends/request', { email });
       return response.data;
     },
     onSuccess: () => {
@@ -67,7 +67,7 @@ export function useAcceptFriendRequest() {
 
   return useMutation({
     mutationFn: async (requestId: string) => {
-      const response = await apiClient.post(`/friends/request/${requestId}/accept`);
+      const response = await api.post(`/friends/request/${requestId}/accept`);
       return response.data;
     },
     onSuccess: () => {
@@ -86,7 +86,7 @@ export function useDeclineFriendRequest() {
 
   return useMutation({
     mutationFn: async (requestId: string) => {
-      const response = await apiClient.post(`/friends/request/${requestId}/decline`);
+      const response = await api.post(`/friends/request/${requestId}/decline`);
       return response.data;
     },
     onSuccess: () => {
@@ -104,7 +104,7 @@ export function useCancelFriendRequest() {
 
   return useMutation({
     mutationFn: async (requestId: string) => {
-      const response = await apiClient.delete(`/friends/request/${requestId}`);
+      const response = await api.delete(`/friends/request/${requestId}`);
       return response.data;
     },
     onSuccess: () => {
@@ -122,7 +122,7 @@ export function useRemoveFriend() {
 
   return useMutation({
     mutationFn: async (friendId: string) => {
-      const response = await apiClient.delete(`/friends/${friendId}`);
+      const response = await api.delete(`/friends/${friendId}`);
       return response.data;
     },
     onSuccess: () => {
@@ -142,7 +142,7 @@ export function useSearchUsers(searchQuery: string) {
       if (!searchQuery || searchQuery.trim().length < 2) {
         return [];
       }
-      const response = await apiClient.get('/friends/search', {
+      const response = await api.get('/friends/search', {
         params: { q: searchQuery },
       });
       return response.data;
