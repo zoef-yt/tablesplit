@@ -27,6 +27,9 @@ export function useRealtimeUpdates(groupId: string) {
 				return [data.expense, ...old];
 			});
 			queryClient.setQueryData(["balances", groupId], data.updatedBalances);
+			// Invalidate settlements since balances changed
+			queryClient.invalidateQueries({ queryKey: ["settlements", groupId] });
+			queryClient.invalidateQueries({ queryKey: ["group", groupId] });
 			vibrate([10, 50, 10]);
 		};
 
@@ -39,6 +42,9 @@ export function useRealtimeUpdates(groupId: string) {
 				old.map((exp) => (exp._id === data.expense._id ? data.expense : exp))
 			);
 			queryClient.setQueryData(["balances", groupId], data.updatedBalances);
+			// Invalidate settlements since balances changed
+			queryClient.invalidateQueries({ queryKey: ["settlements", groupId] });
+			queryClient.invalidateQueries({ queryKey: ["group", groupId] });
 			vibrate([10, 50, 10]);
 		};
 
@@ -51,14 +57,20 @@ export function useRealtimeUpdates(groupId: string) {
 				old.filter((exp) => exp._id !== data.expenseId)
 			);
 			queryClient.setQueryData(["balances", groupId], data.updatedBalances);
+			// Invalidate settlements since balances changed
+			queryClient.invalidateQueries({ queryKey: ["settlements", groupId] });
+			queryClient.invalidateQueries({ queryKey: ["group", groupId] });
 			vibrate([10, 50, 10]);
 		};
 
 		// Handle payment settled
 		const handlePaymentSettled = () => {
+			// Invalidate all related queries to fetch fresh data
 			queryClient.invalidateQueries({ queryKey: ["balances", groupId] });
 			queryClient.invalidateQueries({ queryKey: ["settlements", groupId] });
 			queryClient.invalidateQueries({ queryKey: ["settlement-history", groupId] });
+			queryClient.invalidateQueries({ queryKey: ["expenses", groupId] });
+			queryClient.invalidateQueries({ queryKey: ["group", groupId] });
 			vibrate([10, 50, 10]);
 		};
 
