@@ -1,18 +1,18 @@
 import { Router } from 'express';
 import { friendsService } from '../services/friends.service';
-import { authMiddleware } from '../middleware/auth';
+import { authenticateToken, AuthRequest } from '../middleware/auth';
 import { logger } from '../utils/logger';
 
 const router = Router();
 
 // All routes require authentication
-router.use(authMiddleware);
+router.use(authenticateToken);
 
 /**
  * Send a friend request
  * POST /api/friends/request
  */
-router.post('/request', async (req, res) => {
+router.post('/request', async (req: AuthRequest, res) => {
   try {
     const { email } = req.body;
 
@@ -20,12 +20,12 @@ router.post('/request', async (req, res) => {
       return res.status(400).json({ error: 'Email is required' });
     }
 
-    const friendRequest = await friendsService.sendFriendRequest(req.user!._id.toString(), email);
+    const friendRequest = await friendsService.sendFriendRequest(req.userId!, email);
 
-    res.status(201).json(friendRequest);
+    return res.status(201).json(friendRequest);
   } catch (error) {
     logger.error('Error sending friend request:', error);
-    res.status(400).json({
+    return res.status(400).json({
       error: error instanceof Error ? error.message : 'Failed to send friend request',
     });
   }
@@ -35,15 +35,15 @@ router.post('/request', async (req, res) => {
  * Accept a friend request
  * POST /api/friends/request/:requestId/accept
  */
-router.post('/request/:requestId/accept', async (req, res) => {
+router.post('/request/:requestId/accept', async (req: AuthRequest, res) => {
   try {
     const { requestId } = req.params;
-    const friendship = await friendsService.acceptFriendRequest(requestId, req.user!._id.toString());
+    const friendship = await friendsService.acceptFriendRequest(requestId, req.userId!);
 
-    res.json(friendship);
+    return res.json(friendship);
   } catch (error) {
     logger.error('Error accepting friend request:', error);
-    res.status(400).json({
+    return res.status(400).json({
       error: error instanceof Error ? error.message : 'Failed to accept friend request',
     });
   }
@@ -53,15 +53,15 @@ router.post('/request/:requestId/accept', async (req, res) => {
  * Decline a friend request
  * POST /api/friends/request/:requestId/decline
  */
-router.post('/request/:requestId/decline', async (req, res) => {
+router.post('/request/:requestId/decline', async (req: AuthRequest, res) => {
   try {
     const { requestId } = req.params;
-    await friendsService.declineFriendRequest(requestId, req.user!._id.toString());
+    await friendsService.declineFriendRequest(requestId, req.userId!);
 
-    res.json({ message: 'Friend request declined' });
+    return res.json({ message: 'Friend request declined' });
   } catch (error) {
     logger.error('Error declining friend request:', error);
-    res.status(400).json({
+    return res.status(400).json({
       error: error instanceof Error ? error.message : 'Failed to decline friend request',
     });
   }
@@ -71,15 +71,15 @@ router.post('/request/:requestId/decline', async (req, res) => {
  * Cancel a sent friend request
  * DELETE /api/friends/request/:requestId
  */
-router.delete('/request/:requestId', async (req, res) => {
+router.delete('/request/:requestId', async (req: AuthRequest, res) => {
   try {
     const { requestId } = req.params;
-    await friendsService.cancelFriendRequest(requestId, req.user!._id.toString());
+    await friendsService.cancelFriendRequest(requestId, req.userId!);
 
-    res.json({ message: 'Friend request cancelled' });
+    return res.json({ message: 'Friend request cancelled' });
   } catch (error) {
     logger.error('Error cancelling friend request:', error);
-    res.status(400).json({
+    return res.status(400).json({
       error: error instanceof Error ? error.message : 'Failed to cancel friend request',
     });
   }
@@ -89,13 +89,13 @@ router.delete('/request/:requestId', async (req, res) => {
  * Get pending friend requests
  * GET /api/friends/requests/pending
  */
-router.get('/requests/pending', async (req, res) => {
+router.get('/requests/pending', async (req: AuthRequest, res) => {
   try {
-    const requests = await friendsService.getPendingRequests(req.user!._id.toString());
-    res.json(requests);
+    const requests = await friendsService.getPendingRequests(req.userId!);
+    return res.json(requests);
   } catch (error) {
     logger.error('Error fetching pending requests:', error);
-    res.status(500).json({ error: 'Failed to fetch pending requests' });
+    return res.status(500).json({ error: 'Failed to fetch pending requests' });
   }
 });
 
@@ -103,13 +103,13 @@ router.get('/requests/pending', async (req, res) => {
  * Get sent friend requests
  * GET /api/friends/requests/sent
  */
-router.get('/requests/sent', async (req, res) => {
+router.get('/requests/sent', async (req: AuthRequest, res) => {
   try {
-    const requests = await friendsService.getSentRequests(req.user!._id.toString());
-    res.json(requests);
+    const requests = await friendsService.getSentRequests(req.userId!);
+    return res.json(requests);
   } catch (error) {
     logger.error('Error fetching sent requests:', error);
-    res.status(500).json({ error: 'Failed to fetch sent requests' });
+    return res.status(500).json({ error: 'Failed to fetch sent requests' });
   }
 });
 
@@ -117,7 +117,7 @@ router.get('/requests/sent', async (req, res) => {
  * Search for users
  * GET /api/friends/search?q=email
  */
-router.get('/search', async (req, res) => {
+router.get('/search', async (req: AuthRequest, res) => {
   try {
     const { q } = req.query;
 
@@ -125,11 +125,11 @@ router.get('/search', async (req, res) => {
       return res.status(400).json({ error: 'Search query is required' });
     }
 
-    const users = await friendsService.searchUsers(req.user!._id.toString(), q);
-    res.json(users);
+    const users = await friendsService.searchUsers(req.userId!, q);
+    return res.json(users);
   } catch (error) {
     logger.error('Error searching users:', error);
-    res.status(500).json({ error: 'Failed to search users' });
+    return res.status(500).json({ error: 'Failed to search users' });
   }
 });
 
@@ -137,13 +137,13 @@ router.get('/search', async (req, res) => {
  * Get all friends
  * GET /api/friends
  */
-router.get('/', async (req, res) => {
+router.get('/', async (req: AuthRequest, res) => {
   try {
-    const friends = await friendsService.getFriends(req.user!._id.toString());
-    res.json(friends);
+    const friends = await friendsService.getFriends(req.userId!);
+    return res.json(friends);
   } catch (error) {
     logger.error('Error fetching friends:', error);
-    res.status(500).json({ error: 'Failed to fetch friends' });
+    return res.status(500).json({ error: 'Failed to fetch friends' });
   }
 });
 
@@ -151,15 +151,15 @@ router.get('/', async (req, res) => {
  * Remove a friend
  * DELETE /api/friends/:friendId
  */
-router.delete('/:friendId', async (req, res) => {
+router.delete('/:friendId', async (req: AuthRequest, res) => {
   try {
     const { friendId } = req.params;
-    await friendsService.removeFriend(req.user!._id.toString(), friendId);
+    await friendsService.removeFriend(req.userId!, friendId);
 
-    res.json({ message: 'Friend removed successfully' });
+    return res.json({ message: 'Friend removed successfully' });
   } catch (error) {
     logger.error('Error removing friend:', error);
-    res.status(400).json({
+    return res.status(400).json({
       error: error instanceof Error ? error.message : 'Failed to remove friend',
     });
   }
