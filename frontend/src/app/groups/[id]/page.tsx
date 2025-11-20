@@ -56,6 +56,7 @@ import { ExpenseDetailModal } from "@/components/ExpenseDetailModal";
 import { Navigation } from "@/components/Navigation";
 import { GroupSettings } from "@/components/GroupSettings";
 import { AddFriendToGroupDialog } from "@/components/AddFriendToGroupDialog";
+import { Combobox, EXPENSE_CATEGORIES } from "@/components/ui/combobox";
 import type { User, Expense } from "@/types";
 
 const expenseSchema = z.object({
@@ -674,39 +675,12 @@ export default function GroupDetailPage() {
 														Category (Optional)
 													</FormLabel>
 													<FormControl>
-														<div>
-															<Input
-																{...field}
-																list="category-suggestions"
-																placeholder="Select or type category"
-																className="bg-gray-800 border-gray-700 text-white"
-															/>
-															<datalist id="category-suggestions">
-																<option value="Food & Drinks" />
-																<option value="Groceries" />
-																<option value="Restaurant" />
-																<option value="Transport" />
-																<option value="Uber/Ola" />
-																<option value="Fuel" />
-																<option value="Rent" />
-																<option value="Utilities" />
-																<option value="Electricity" />
-																<option value="Internet" />
-																<option value="Shopping" />
-																<option value="Entertainment" />
-																<option value="Movies" />
-																<option value="Travel" />
-																<option value="Hotel" />
-																<option value="Flight" />
-																<option value="Medical" />
-																<option value="Subscriptions" />
-																<option value="Gifts" />
-																<option value="Party" />
-																<option value="Sports" />
-																<option value="Education" />
-																<option value="Other" />
-															</datalist>
-														</div>
+														<Combobox
+															value={field.value || ""}
+															onChange={field.onChange}
+															options={EXPENSE_CATEGORIES}
+															placeholder="Select or type category"
+														/>
 													</FormControl>
 													<FormMessage />
 												</FormItem>
