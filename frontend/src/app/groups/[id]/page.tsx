@@ -674,7 +674,7 @@ export default function GroupDetailPage() {
 														Category (Optional)
 													</FormLabel>
 													<FormControl>
-														<>
+														<div>
 															<Input
 																{...field}
 																list="category-suggestions"
@@ -706,7 +706,7 @@ export default function GroupDetailPage() {
 																<option value="Education" />
 																<option value="Other" />
 															</datalist>
-														</>
+														</div>
 													</FormControl>
 													<FormMessage />
 												</FormItem>
