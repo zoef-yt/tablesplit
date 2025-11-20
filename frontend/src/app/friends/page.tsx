@@ -91,8 +91,12 @@ export default function FriendsPage() {
 				setShowInviteDialog(true);
 				setShowAddFriend(false);
 			} else {
-				toast.error(error?.response?.data?.error || 'Failed to send friend request');
-				console.error(error);
+				// Extract error message from axios error
+				const errorMessage = error?.response?.data?.error
+					|| error?.response?.data?.message
+					|| error?.message
+					|| 'Failed to send friend request';
+				toast.error(errorMessage);
 			}
 		}
 	};

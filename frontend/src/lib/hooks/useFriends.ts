@@ -58,6 +58,7 @@ export function useSendFriendRequest() {
       // Invalidate sent requests to show the new one
       queryClient.invalidateQueries({ queryKey: ['friendRequests', 'sent'] });
     },
+    // Don't show error here - let the component handle it for invite dialog logic
   });
 }
 
