@@ -211,3 +211,98 @@ export interface GroupAnalytics {
 	userStats: UserStats;
 	groupTotals: GroupTotals;
 }
+
+// Friend Types
+export interface FriendRequest {
+	_id: string;
+	from: User | string;
+	to: User | string;
+	status: 'pending' | 'accepted' | 'declined';
+	createdAt: Date;
+	updatedAt: Date;
+}
+
+export interface Friend {
+	_id: string;
+	user1: User | string;
+	user2: User | string;
+	createdAt: Date;
+}
+
+export interface UserWithFriendshipStatus extends User {
+	friendshipStatus?: 'friends' | 'request_sent' | 'request_received' | 'none';
+}
+
+// Gamification Types
+export interface GamificationStats {
+	_id: string;
+	userId: string;
+	xp: number;
+	level: number;
+	totalExpensesAdded: number;
+	totalAmountSplit: number;
+	totalSettlementsMade: number;
+	totalSettlementsReceived: number;
+	totalAmountSettled: number;
+	totalAmountReceived: number;
+	currentSettleStreak: number;
+	longestSettleStreak: number;
+	lastSettleDate: Date | null;
+	currentActiveStreak: number;
+	longestActiveStreak: number;
+	lastActiveDate: Date | null;
+	friendsInvited: number;
+	groupsCreated: number;
+	groupsJoined: number;
+	fastestSettlement: number;
+	averageSettlementTime: number;
+	onTimeSettlements: number;
+	lateSettlements: number;
+	splitBillsAtRestaurants: number;
+	splitBillsForTrips: number;
+	splitBillsForRent: number;
+	largestExpenseAdded: number;
+	smallestExpenseAdded: number;
+	unlockedAchievements: string[];
+	equippedTitle: string;
+	equippedBadge: string;
+	createdAt: Date;
+	updatedAt: Date;
+}
+
+export interface Badge {
+	id: string;
+	name: string;
+	description: string;
+	icon: string;
+	rarity: 'common' | 'rare' | 'epic' | 'legendary';
+}
+
+export interface Achievement {
+	id: string;
+	name: string;
+	description: string;
+	xpReward: number;
+	unlocked: boolean;
+}
+
+export interface GamificationProfile {
+	stats: GamificationStats;
+	currentTitle: string;
+	nextLevel: number;
+	xpForNextLevel: number;
+	xpProgress: number;
+	availableTitles: string[];
+	unlockedBadges: Badge[];
+	achievements: Achievement[];
+}
+
+export interface LeaderboardEntry {
+	rank: number;
+	user: User;
+	xp: number;
+	level: number;
+	title: string;
+	badge: string;
+	value: number;
+}

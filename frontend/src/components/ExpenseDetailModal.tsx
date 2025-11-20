@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import {
 	X,
@@ -59,6 +59,9 @@ export function ExpenseDetailModal({
 	const updateExpenseMutation = useUpdateExpense(groupId);
 	const { data: settlementHistory = [] } = useSettlementHistory(groupId);
 
+	// Track if we've emitted an activity (to avoid emitting null on initial render)
+	const hasEmittedActivityRef = useRef(false);
+
 	useEffect(() => {
 		if (expense) {
 			setEditDescription(expense.description);
@@ -82,8 +85,11 @@ export function ExpenseDetailModal({
 				} else {
 					emitUserActivity(groupId, `Viewing expense: ${expense.description}`);
 				}
-			} else if (!isOpen) {
-				emitUserActivity(groupId, null); // Clear activity
+				hasEmittedActivityRef.current = true;
+			} else if (!isOpen && hasEmittedActivityRef.current) {
+				// Only clear if we previously emitted an activity
+				emitUserActivity(groupId, null);
+				hasEmittedActivityRef.current = false;
 			}
 		}, 200);
 

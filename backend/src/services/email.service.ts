@@ -162,6 +162,22 @@ export class EmailService {
     });
   }
 
+  async sendPlatformInvite(email: string, inviterName: string): Promise<void> {
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const signupUrl = `${frontendUrl}/auth/signup`;
+
+    await this.sendEmail({
+      to: email,
+      subject: `${inviterName} invited you to join TableSplit!`,
+      template: 'platform-invite',
+      context: {
+        inviterName,
+        signupUrl,
+        frontendUrl,
+      },
+    });
+  }
+
   private getFallbackTemplate(templateName: string, context: Record<string, any>): string {
     // Fallback HTML templates
     if (templateName === 'magic-link') {
@@ -240,6 +256,52 @@ export class EmailService {
             <p style="color: #999; font-size: 14px; text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee;">
               Need help? Just reply to this email and we'll get back to you.<br>
               Happy splitting! 🎉
+            </p>
+          </div>
+        </body>
+        </html>
+      `;
+    }
+
+    if (templateName === 'platform-invite') {
+      return `
+        <!DOCTYPE html>
+        <html>
+        <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;">
+          <div style="background-color: white; border-radius: 12px; padding: 40px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <div style="text-align: center; margin-bottom: 30px;">
+              <div style="display: inline-block; width: 80px; height: 80px; background: linear-gradient(135deg, #ffd700, #daa520); border-radius: 50%; margin-bottom: 20px;">
+                <span style="font-size: 36px; line-height: 80px;">🎲</span>
+              </div>
+              <h1 style="color: #1a4d2e; margin: 0; font-size: 28px;">You're Invited to TableSplit!</h1>
+            </div>
+
+            <p style="font-size: 18px; color: #333; margin-bottom: 20px;">
+              <strong>${context.inviterName}</strong> wants to add you as a friend on TableSplit! 🎉
+            </p>
+
+            <p style="color: #666; line-height: 1.6;">
+              TableSplit makes it easy to track and split expenses with friends, roommates, or colleagues.
+              Join ${context.inviterName} and start managing shared expenses together!
+            </p>
+
+            <div style="background-color: #fffbeb; border-left: 4px solid #ffd700; padding: 20px; margin: 30px 0; border-radius: 4px;">
+              <h3 style="color: #1a4d2e; margin-top: 0;">With TableSplit you can:</h3>
+              <ul style="color: #666; line-height: 1.8; margin: 0;">
+                <li>Track shared expenses in real-time</li>
+                <li>Split bills fairly with friends</li>
+                <li>See who owes what at a glance</li>
+                <li>Settle up easily with UPI, cash, or bank transfer</li>
+              </ul>
+            </div>
+
+            <div style="text-align: center; margin: 40px 0;">
+              <a href="${context.signupUrl}" style="display: inline-block; padding: 16px 32px; background: linear-gradient(135deg, #ffd700, #daa520); color: #000; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">Join TableSplit Now</a>
+            </div>
+
+            <p style="color: #999; font-size: 14px; text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee;">
+              Once you sign up, you can connect with ${context.inviterName} and start splitting expenses!<br>
+              See you at the table! 🎰
             </p>
           </div>
         </body>

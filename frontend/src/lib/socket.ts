@@ -62,7 +62,12 @@ export const joinGroup = (groupId: string): void => {
 		console.log("📍 Joining group:", groupId);
 		socket.emit("group:join", groupId);
 	} else {
-		console.warn("⚠️ Cannot join group - socket not connected");
+		console.warn("⚠️ Socket not connected yet, will join group when connected");
+		// Wait for socket to connect, then join
+		socket.once("connect", () => {
+			console.log("📍 Socket connected, now joining group:", groupId);
+			socket.emit("group:join", groupId);
+		});
 	}
 };
 

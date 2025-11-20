@@ -234,4 +234,111 @@ router.get('/group/:groupId/analytics', async (req: AuthRequest, res: Response, 
   }
 });
 
+/**
+ * GET /api/expenses/group/:groupId/debug
+ * Debug endpoint to see all expenses and calculations
+ */
+router.get('/group/:groupId/debug', async (req: AuthRequest, res: Response, next) => {
+  try {
+    const { groupId } = req.params;
+
+    const expenses = await expenseService.getGroupExpenses(req.userId!, groupId);
+    const balances = await expenseService.getGroupBalances(req.userId!, groupId);
+    const settlements = await expenseService.calculateSettlement(req.userId!, groupId);
+
+    // Manual calculation
+    const userBalances: Record<string, { name: string; balance: number }> = {};
+
+    for (const expense of expenses) {
+      const paidByObj = expense.paidBy as any;
+      const paidById = paidByObj?._id?.toString() || paidByObj?.toString() || '';
+
+      for (const split of expense.splits) {
+        const userIdObj = split.userId as any;
+        const userId = userIdObj?._id?.toString() || userIdObj?.toString() || '';
+        const userName = userIdObj?.name || 'Unknown';
+
+        if (!userBalances[userId]) {
+          userBalances[userId] = { name: userName, balance: 0 };
+        }
+
+        if (userId === paidById) {
+          // Payer: balance increases by (total - their share)
+          const netChange = expense.amount - split.amount;
+          userBalances[userId].balance += netChange;
+        } else {
+          // Others: balance decreases by their share
+          userBalances[userId].balance -= split.amount;
+        }
+      }
+    }
+
+    res.json({
+      success: true,
+      data: {
+        expenses: expenses.map(e => {
+          const paidByObj = e.paidBy as any;
+          return {
+            description: e.description,
+            amount: e.amount,
+            paidBy: paidByObj?.name || 'Unknown',
+            splits: e.splits.map(s => {
+              const userObj = s.userId as any;
+              return {
+                user: userObj?.name || 'Unknown',
+                amount: s.amount,
+                percentage: s.percentage
+              };
+            }),
+            date: e.createdAt
+          };
+        }),
+        balances: balances.map(b => {
+          const userObj = b.userId as any;
+          return {
+            user: userObj?.name || 'Unknown',
+            balance: b.balance
+          };
+        }),
+        calculatedBalances: Object.values(userBalances),
+        settlements: settlements.map(s => ({
+          from: s.from,
+          to: s.to,
+          amount: s.amount
+        })),
+        mismatch: Object.values(userBalances).some(u => {
+          const dbBalance = balances.find(b => {
+            const userObj = b.userId as any;
+            const userId = userObj?._id?.toString() || userObj?.toString() || '';
+            return userId === Object.keys(userBalances).find(k => userBalances[k].name === u.name);
+          });
+          return dbBalance ? Math.abs(dbBalance.balance - u.balance) > 0.01 : true;
+        })
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * POST /api/expenses/group/:groupId/recalculate-balances
+ * Recalculate all balances from scratch (fix corrupted balances)
+ */
+router.post('/group/:groupId/recalculate-balances', async (req: AuthRequest, res: Response, next) => {
+  try {
+    const { groupId } = req.params;
+
+    const result = await expenseService.recalculateBalances(req.userId!, groupId);
+
+    res.json({
+      success: true,
+      message: 'Balances recalculated successfully',
+      data: result
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;

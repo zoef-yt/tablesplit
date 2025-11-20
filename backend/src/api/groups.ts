@@ -152,6 +152,33 @@ router.delete('/:id/leave', async (req: AuthRequest, res: Response, next) => {
 });
 
 /**
+ * POST /api/groups/:id/members
+ * Add a member to the group directly (must be friends)
+ */
+router.post('/:id/members', async (req: AuthRequest, res: Response, next) => {
+  try {
+    const { id } = req.params;
+    const { userId } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        error: 'User ID is required',
+      });
+    }
+
+    const group = await groupService.addMember(req.userId!, id, userId);
+
+    return res.json({
+      success: true,
+      data: group,
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+/**
  * DELETE /api/groups/:id/members/:memberId
  * Remove member from group (creator only)
  */

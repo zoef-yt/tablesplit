@@ -5,6 +5,7 @@ import { NotFoundError, ForbiddenError, BadRequestError } from '../middleware/er
 import { logger } from '../utils/logger';
 import { v4 as uuidv4 } from 'uuid';
 import { redisClient } from '../config/redis';
+import { gamificationService } from './gamification.service';
 
 export class GroupService {
   /**
@@ -30,6 +31,11 @@ export class GroupService {
     });
 
     logger.info(`Group created: ${group._id} by user ${userId}`);
+
+    // Track gamification
+    gamificationService.trackGroupCreated(userId).catch((err) => {
+      logger.error('Failed to track group created for gamification:', err);
+    });
 
     return group;
   }
@@ -138,6 +144,11 @@ export class GroupService {
 
     logger.info(`User ${userId} joined group ${groupId}`);
 
+    // Track gamification
+    gamificationService.trackGroupJoined(userId).catch((err) => {
+      logger.error('Failed to track group joined for gamification:', err);
+    });
+
     return group;
   }
 
@@ -190,6 +201,64 @@ export class GroupService {
       await group.save();
       logger.info(`User ${userId} left group ${groupId}`);
     }
+  }
+
+  /**
+   * Add a member to the group (must be friends with the inviter)
+   */
+  async addMember(inviterId: string, groupId: string, newMemberId: string): Promise<IGroup> {
+    const group = await Group.findById(groupId).populate('members.userId', 'name email avatar');
+
+    if (!group) {
+      throw new NotFoundError('Group not found');
+    }
+
+    // Check if inviter is a member of the group
+    const inviterIsMember = group.members.some((m) => m.userId._id.toString() === inviterId);
+    if (!inviterIsMember) {
+      throw new ForbiddenError('You must be a member of the group to invite others');
+    }
+
+    // Check if the new member is already in the group
+    const alreadyMember = group.members.some((m) => m.userId._id.toString() === newMemberId);
+    if (alreadyMember) {
+      throw new BadRequestError('User is already a member of this group');
+    }
+
+    // Check if they are friends using the Friend model
+    const { Friend } = await import('../models/Friend');
+    const areFriends = await Friend.countDocuments({
+      $or: [
+        { user1: inviterId, user2: newMemberId },
+        { user1: newMemberId, user2: inviterId },
+      ],
+    }) > 0;
+
+    if (!areFriends) {
+      throw new ForbiddenError('You can only add friends to your groups');
+    }
+
+    // Verify the user exists
+    const { User } = await import('../models/User');
+    const userExists = await User.findById(newMemberId);
+    if (!userExists) {
+      throw new NotFoundError('User not found');
+    }
+
+    // Add the new member with the next seat position
+    const nextSeatPosition = group.members.length;
+    group.members.push({
+      userId: newMemberId,
+      seatPosition: nextSeatPosition,
+      joinedAt: new Date(),
+    } as any);
+
+    await group.save();
+
+    logger.info(`Member ${newMemberId} added to group ${groupId} by ${inviterId}`);
+
+    // Return populated group
+    return await Group.findById(groupId).populate('members.userId', 'name email avatar') as IGroup;
   }
 
   /**

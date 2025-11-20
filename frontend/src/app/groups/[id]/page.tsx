@@ -2,7 +2,7 @@
 
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import {
 	ArrowLeft,
@@ -51,10 +51,12 @@ import {
 } from "@/components/ui/form";
 import { formatCurrency } from "@/lib/utils";
 import { SettlementPanel } from "@/components/SettlementPanel";
-import { SettlementHistory } from "@/components/SettlementHistory";
+import { Timeline } from "@/components/Timeline";
 import { ExpenseDetailModal } from "@/components/ExpenseDetailModal";
 import { Navigation } from "@/components/Navigation";
 import { GroupSettings } from "@/components/GroupSettings";
+import { AddFriendToGroupDialog } from "@/components/AddFriendToGroupDialog";
+import { Combobox, EXPENSE_CATEGORIES } from "@/components/ui/combobox";
 import type { User, Expense } from "@/types";
 
 const expenseSchema = z.object({
@@ -78,6 +80,9 @@ export default function GroupDetailPage() {
 	const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
 	const [isExpenseDetailOpen, setIsExpenseDetailOpen] = useState(false);
 	const [showSettlementHistory, setShowSettlementHistory] = useState(false);
+
+	// Track if we've emitted an activity (to avoid emitting null on initial render)
+	const hasEmittedActivityRef = useRef(false);
 
 	const groupId = params.id as string;
 
@@ -106,9 +111,11 @@ export default function GroupDetailPage() {
 		const timer = setTimeout(() => {
 			if (isExpenseDialogOpen) {
 				emitUserActivity(groupId, "Adding an expense...");
-			} else if (!isExpenseDetailOpen) {
-				// Only clear if expense detail is also closed
+				hasEmittedActivityRef.current = true;
+			} else if (!isExpenseDetailOpen && hasEmittedActivityRef.current) {
+				// Only clear if we previously emitted an activity and expense detail is also closed
 				emitUserActivity(groupId, null);
+				hasEmittedActivityRef.current = false;
 			}
 		}, 200);
 
@@ -302,6 +309,12 @@ export default function GroupDetailPage() {
 							<TrendingUp className="w-6 h-6" />
 						</Link>
 						<GroupSettings group={group} currentUserId={user._id} />
+						<AddFriendToGroupDialog
+							groupId={groupId}
+							currentMembers={group.members.map((m) =>
+								typeof m.userId === "object" && m.userId ? m.userId._id : m.userId
+							)}
+						/>
 						<Dialog
 							open={isInviteDialogOpen}
 							onOpenChange={setIsInviteDialogOpen}
@@ -310,7 +323,7 @@ export default function GroupDetailPage() {
 								<button
 									onClick={() => setInviteLink("")}
 									className="p-2 hover:bg-gray-800 rounded-full transition-colors text-primary-500"
-									title="Invite members"
+									title="Generate invite link"
 								>
 									<UserPlus className="w-6 h-6" />
 								</button>
@@ -554,7 +567,7 @@ export default function GroupDetailPage() {
 										: "text-gray-400 hover:text-white hover:bg-gray-800/30"
 								}`}
 							>
-								History ({settlementHistory.length})
+								Timeline ({expenses.length + settlementHistory.length})
 							</button>
 						</div>
 
@@ -570,7 +583,8 @@ export default function GroupDetailPage() {
 									onMarkAsPaid={handleMarkAsPaid}
 								/>
 							) : (
-								<SettlementHistory
+								<Timeline
+									expenses={expenses}
 									settlements={settlementHistory}
 									users={usersLookup}
 									currentUserId={user._id}
@@ -584,17 +598,13 @@ export default function GroupDetailPage() {
 				<div className="mb-20">
 					<div className="flex items-center justify-between mb-4">
 						<h2 className="text-xl font-bold text-white">Recent Expenses</h2>
-						<Dialog
-							open={isExpenseDialogOpen}
-							onOpenChange={setIsExpenseDialogOpen}
-						>
-							<DialogTrigger asChild>
-								<Button className="bg-primary-600 hover:bg-primary-700">
-									<Plus className="w-5 h-5 mr-2" />
-									Add Expense
-								</Button>
-							</DialogTrigger>
-							<DialogContent className="bg-gray-900 border-gray-800">
+					</div>
+
+					<Dialog
+						open={isExpenseDialogOpen}
+						onOpenChange={setIsExpenseDialogOpen}
+					>
+						<DialogContent className="bg-gray-900 border-gray-800">
 								<DialogHeader>
 									<DialogTitle className="text-white">
 										Add New Expense
@@ -665,10 +675,11 @@ export default function GroupDetailPage() {
 														Category (Optional)
 													</FormLabel>
 													<FormControl>
-														<Input
-															{...field}
-															placeholder="Food, Transport, etc."
-															className="bg-gray-800 border-gray-700 text-white"
+														<Combobox
+															value={field.value || ""}
+															onChange={field.onChange}
+															options={EXPENSE_CATEGORIES}
+															placeholder="Select or type category"
 														/>
 													</FormControl>
 													<FormMessage />
@@ -750,9 +761,8 @@ export default function GroupDetailPage() {
 										</Button>
 									</form>
 								</Form>
-							</DialogContent>
-						</Dialog>
-					</div>
+						</DialogContent>
+					</Dialog>
 
 					{expenses.length === 0 ? (
 						<div className="text-center py-12 bg-gray-900/30 rounded-xl border border-gray-800">
@@ -842,6 +852,19 @@ export default function GroupDetailPage() {
 					groupId={groupId}
 					groupMembers={Object.values(usersLookup)}
 				/>
+
+				{/* Floating Add Expense Button */}
+				<motion.button
+					onClick={() => setIsExpenseDialogOpen(true)}
+					className="fixed bottom-6 right-6 bg-primary-600 hover:bg-primary-700 text-white rounded-full p-4 shadow-lg hover:shadow-xl transition-all z-50"
+					whileHover={{ scale: 1.1 }}
+					whileTap={{ scale: 0.95 }}
+					initial={{ scale: 0 }}
+					animate={{ scale: 1 }}
+					transition={{ type: "spring", stiffness: 260, damping: 20 }}
+				>
+					<Plus className="w-6 h-6" />
+				</motion.button>
 			</div>
 		</div>
 	);
