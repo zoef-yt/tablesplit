@@ -5,6 +5,7 @@ import { Group } from '../models/Group';
 import { NotFoundError, ForbiddenError } from '../middleware/errorHandler';
 import { logger } from '../utils/logger';
 import { Types } from 'mongoose';
+import { gamificationService } from './gamification.service';
 
 interface CalculatedSettlement {
   from: string;
@@ -57,6 +58,11 @@ export class ExpenseService {
     // Populate expense with user information before returning
     await expense.populate('paidBy', 'name email avatar');
     await expense.populate('splits.userId', 'name email avatar');
+
+    // Track gamification (don't await to avoid slowing down the request)
+    gamificationService.trackExpenseAdded(paidBy, amount, category).catch((err) => {
+      logger.error('Failed to track expense for gamification:', err);
+    });
 
     logger.info(`Expense created: ${expense._id} in group ${groupId}`);
 
@@ -190,6 +196,14 @@ export class ExpenseService {
     );
 
     logger.info(`Settlement recorded: ${fromUserId} paid ${toUserId} ${amount} in group ${groupId} via ${paymentMethod || 'unknown method'}`);
+
+    // Track gamification for both parties (don't await to avoid slowing down the request)
+    gamificationService.trackSettlementMade(fromUserId, amount, settlement.settledAt).catch((err) => {
+      logger.error('Failed to track settlement made for gamification:', err);
+    });
+    gamificationService.trackSettlementReceived(toUserId, amount).catch((err) => {
+      logger.error('Failed to track settlement received for gamification:', err);
+    });
 
     // Return updated balances and settlement
     const updatedBalances = await this.getGroupBalances(userId, groupId);

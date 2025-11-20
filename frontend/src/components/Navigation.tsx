@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/lib/store/auth";
-import { Users as UsersIcon, UserCircle, LogOut, Receipt, UserPlus } from "lucide-react";
+import { Users as UsersIcon, UserCircle, LogOut, Receipt, UserPlus, Trophy } from "lucide-react";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -48,6 +48,14 @@ export function Navigation() {
 						>
 							<UserPlus className="w-5 h-5" />
 							<span>Friends</span>
+						</button>
+
+						<button
+							onClick={() => router.push("/achievements")}
+							className="flex items-center gap-2 text-gray-300 hover:text-white transition-colors"
+						>
+							<Trophy className="w-5 h-5" />
+							<span>Achievements</span>
 						</button>
 
 						{/* User Menu */}

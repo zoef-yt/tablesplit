@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { friendsService } from '../services/friends.service';
 import { emailService } from '../services/email.service';
+import { gamificationService } from '../services/gamification.service';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
 import { logger } from '../utils/logger';
 import { User } from '../models/User';
@@ -65,6 +66,11 @@ router.post('/invite', async (req: AuthRequest, res) => {
     // Send platform invite email
     await emailService.sendPlatformInvite(email, currentUser.name);
 
+    // Track gamification
+    gamificationService.trackFriendInvited(req.userId!).catch((err) => {
+      logger.error('Failed to track friend invited for gamification:', err);
+    });
+
     logger.info(`Platform invite sent from ${currentUser.email} to ${email}`);
 
     return res.json({
@@ -87,6 +93,11 @@ router.post('/request/:requestId/accept', async (req: AuthRequest, res) => {
   try {
     const { requestId } = req.params;
     const friendship = await friendsService.acceptFriendRequest(requestId, req.userId!);
+
+    // Track gamification for both parties
+    gamificationService.trackFriendAccepted(req.userId!).catch((err) => {
+      logger.error('Failed to track friend accepted for gamification:', err);
+    });
 
     return res.json(friendship);
   } catch (error) {

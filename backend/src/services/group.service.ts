@@ -5,6 +5,7 @@ import { NotFoundError, ForbiddenError, BadRequestError } from '../middleware/er
 import { logger } from '../utils/logger';
 import { v4 as uuidv4 } from 'uuid';
 import { redisClient } from '../config/redis';
+import { gamificationService } from './gamification.service';
 
 export class GroupService {
   /**
@@ -30,6 +31,11 @@ export class GroupService {
     });
 
     logger.info(`Group created: ${group._id} by user ${userId}`);
+
+    // Track gamification
+    gamificationService.trackGroupCreated(userId).catch((err) => {
+      logger.error('Failed to track group created for gamification:', err);
+    });
 
     return group;
   }
@@ -137,6 +143,11 @@ export class GroupService {
     await group.save();
 
     logger.info(`User ${userId} joined group ${groupId}`);
+
+    // Track gamification
+    gamificationService.trackGroupJoined(userId).catch((err) => {
+      logger.error('Failed to track group joined for gamification:', err);
+    });
 
     return group;
   }
