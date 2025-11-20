@@ -341,4 +341,23 @@ router.post('/group/:groupId/recalculate-balances', async (req: AuthRequest, res
   }
 });
 
+/**
+ * GET /api/expenses/group/:groupId/summary
+ * Get expense summary for printable report
+ */
+router.get('/group/:groupId/summary', async (req: AuthRequest, res: Response, next) => {
+  try {
+    const { groupId } = req.params;
+
+    const summary = await expenseService.getExpenseSummary(req.userId!, groupId);
+
+    res.json({
+      success: true,
+      data: summary,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;

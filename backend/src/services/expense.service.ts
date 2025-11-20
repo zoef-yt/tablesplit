@@ -862,6 +862,327 @@ export class ExpenseService {
       groupTotals,
     };
   }
+
+  /**
+   * Get expense summary for printable report
+   */
+  async getExpenseSummary(userId: string, groupId: string): Promise<{
+    group: {
+      name: string;
+      createdAt: Date;
+      memberCount: number;
+    };
+    members: Array<{
+      _id: string;
+      name: string;
+      email: string;
+      avatar?: string;
+    }>;
+    expenses: Array<{
+      _id: string;
+      date: Date;
+      description: string;
+      amount: number;
+      paidBy: {
+        _id: string;
+        name: string;
+      };
+      category?: string;
+      splits: Array<{
+        userId: string;
+        userName: string;
+        amount: number;
+      }>;
+      runningBalances: Record<string, number>;
+    }>;
+    settlements: Array<{
+      _id: string;
+      date: Date;
+      fromUser: {
+        _id: string;
+        name: string;
+      };
+      toUser: {
+        _id: string;
+        name: string;
+      };
+      amount: number;
+      runningBalances: Record<string, number>;
+    }>;
+    finalBalances: Array<{
+      userId: string;
+      userName: string;
+      balance: number;
+    }>;
+    totals: {
+      totalExpenses: number;
+      totalSettled: number;
+      expenseCount: number;
+      settlementCount: number;
+    };
+    memberBreakdowns: Array<{
+      member: {
+        _id: string;
+        name: string;
+        email: string;
+      };
+      transactions: Array<{
+        date: Date;
+        description: string;
+        cost: number;
+        youPaid: number;
+        yourShare: number;
+        balance: number;
+        type: 'expense' | 'settlement_sent' | 'settlement_received';
+      }>;
+      totalPaid: number;
+      totalShare: number;
+      finalBalance: number;
+    }>;
+  }> {
+    const group = await Group.findById(groupId).populate('members.userId', 'name email avatar');
+
+    if (!group) {
+      throw new NotFoundError('Group not found');
+    }
+
+    // Verify user is member
+    const isMember = group.members.some((m) => m.userId && (m.userId as any)._id?.toString() === userId);
+    if (!isMember) {
+      throw new ForbiddenError('You are not a member of this group');
+    }
+
+    // Get all expenses and settlements, sorted by date
+    const expenses = await Expense.find({ groupId })
+      .populate('paidBy', 'name email avatar')
+      .populate('splits.userId', 'name email avatar')
+      .sort({ date: 1, createdAt: 1 });
+
+    const settlements = await SettlementModel.find({ groupId })
+      .populate('fromUserId', 'name email avatar')
+      .populate('toUserId', 'name email avatar')
+      .sort({ settledAt: 1 });
+
+    // Build member list
+    const members = group.members.map((m) => {
+      const user = m.userId as any;
+      return {
+        _id: user._id.toString(),
+        name: user.name,
+        email: user.email,
+        avatar: user.avatar,
+      };
+    });
+
+    // Calculate running balances for each transaction
+    const runningBalances: Record<string, number> = {};
+    members.forEach((m) => {
+      runningBalances[m._id] = 0;
+    });
+
+    // Combine expenses and settlements into a single timeline
+    type TimelineItem = {
+      type: 'expense' | 'settlement';
+      date: Date;
+      data: any;
+    };
+
+    const timeline: TimelineItem[] = [
+      ...expenses.map((e) => ({
+        type: 'expense' as const,
+        date: e.date,
+        data: e,
+      })),
+      ...settlements.map((s) => ({
+        type: 'settlement' as const,
+        date: s.settledAt,
+        data: s,
+      })),
+    ].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    // Process timeline and calculate running balances
+    const processedExpenses: any[] = [];
+    const processedSettlements: any[] = [];
+
+    for (const item of timeline) {
+      if (item.type === 'expense') {
+        const expense = item.data;
+        const paidByObj = expense.paidBy as any;
+        const paidById = paidByObj._id.toString();
+
+        // Update balances for this expense
+        for (const split of expense.splits) {
+          const splitUserObj = split.userId as any;
+          const splitUserId = splitUserObj._id.toString();
+
+          if (splitUserId === paidById) {
+            runningBalances[splitUserId] += expense.amount - split.amount;
+          } else {
+            runningBalances[splitUserId] -= split.amount;
+          }
+        }
+
+        processedExpenses.push({
+          _id: expense._id.toString(),
+          date: expense.date,
+          description: expense.description,
+          amount: expense.amount,
+          paidBy: {
+            _id: paidById,
+            name: paidByObj.name,
+          },
+          category: expense.category,
+          splits: expense.splits.map((s: any) => ({
+            userId: s.userId._id.toString(),
+            userName: s.userId.name,
+            amount: s.amount,
+          })),
+          runningBalances: { ...runningBalances },
+        });
+      } else {
+        const settlement = item.data;
+        const fromUserObj = settlement.fromUserId as any;
+        const toUserObj = settlement.toUserId as any;
+
+        // Update balances for this settlement
+        runningBalances[fromUserObj._id.toString()] += settlement.amount;
+        runningBalances[toUserObj._id.toString()] -= settlement.amount;
+
+        processedSettlements.push({
+          _id: settlement._id.toString(),
+          date: settlement.settledAt,
+          fromUser: {
+            _id: fromUserObj._id.toString(),
+            name: fromUserObj.name,
+          },
+          toUser: {
+            _id: toUserObj._id.toString(),
+            name: toUserObj.name,
+          },
+          amount: settlement.amount,
+          runningBalances: { ...runningBalances },
+        });
+      }
+    }
+
+    // Calculate final balances
+    const finalBalances = members.map((m) => ({
+      userId: m._id,
+      userName: m.name,
+      balance: parseFloat(runningBalances[m._id].toFixed(2)),
+    }));
+
+    // Calculate totals
+    const totals = {
+      totalExpenses: expenses.reduce((sum, e) => sum + e.amount, 0),
+      totalSettled: settlements.reduce((sum, s) => sum + s.amount, 0),
+      expenseCount: expenses.length,
+      settlementCount: settlements.length,
+    };
+
+    // Generate member breakdowns
+    const memberBreakdowns = members.map((member) => {
+      const transactions: any[] = [];
+      let memberBalance = 0;
+      let totalPaid = 0;
+      let totalShare = 0;
+
+      // Process timeline for this member
+      for (const item of timeline) {
+        if (item.type === 'expense') {
+          const expense = item.data;
+          const paidByObj = expense.paidBy as any;
+          const paidById = paidByObj._id.toString();
+
+          // Find this member's split
+          const memberSplit = expense.splits.find((s: any) => s.userId._id.toString() === member._id);
+          if (!memberSplit) continue; // Member not involved in this expense
+
+          const youPaid = paidById === member._id ? expense.amount : 0;
+          const yourShare = memberSplit.amount;
+
+          if (youPaid > 0) {
+            totalPaid += youPaid;
+          }
+          totalShare += yourShare;
+
+          // Update running balance
+          if (paidById === member._id) {
+            memberBalance += expense.amount - yourShare;
+          } else {
+            memberBalance -= yourShare;
+          }
+
+          transactions.push({
+            date: expense.date,
+            description: expense.description,
+            cost: expense.amount,
+            youPaid,
+            yourShare,
+            balance: parseFloat(memberBalance.toFixed(2)),
+            type: 'expense',
+          });
+        } else {
+          const settlement = item.data;
+          const fromUserObj = settlement.fromUserId as any;
+          const toUserObj = settlement.toUserId as any;
+
+          // Check if this member is involved
+          if (fromUserObj._id.toString() === member._id) {
+            // Member sent money
+            memberBalance += settlement.amount;
+            transactions.push({
+              date: settlement.settledAt,
+              description: `Paid ${toUserObj.name}`,
+              cost: settlement.amount,
+              youPaid: settlement.amount,
+              yourShare: settlement.amount,
+              balance: parseFloat(memberBalance.toFixed(2)),
+              type: 'settlement_sent',
+            });
+          } else if (toUserObj._id.toString() === member._id) {
+            // Member received money
+            memberBalance -= settlement.amount;
+            transactions.push({
+              date: settlement.settledAt,
+              description: `Received from ${fromUserObj.name}`,
+              cost: settlement.amount,
+              youPaid: 0,
+              yourShare: settlement.amount,
+              balance: parseFloat(memberBalance.toFixed(2)),
+              type: 'settlement_received',
+            });
+          }
+        }
+      }
+
+      return {
+        member: {
+          _id: member._id,
+          name: member.name,
+          email: member.email,
+        },
+        transactions,
+        totalPaid: parseFloat(totalPaid.toFixed(2)),
+        totalShare: parseFloat(totalShare.toFixed(2)),
+        finalBalance: parseFloat(memberBalance.toFixed(2)),
+      };
+    });
+
+    return {
+      group: {
+        name: group.name,
+        createdAt: group.createdAt,
+        memberCount: members.length,
+      },
+      members,
+      expenses: processedExpenses,
+      settlements: processedSettlements,
+      finalBalances,
+      totals,
+      memberBreakdowns,
+    };
+  }
 }
 
 export const expenseService = new ExpenseService();
