@@ -44,6 +44,7 @@ export default function FriendsPage() {
 	const [showAddFriend, setShowAddFriend] = useState(false);
 	const [showInviteDialog, setShowInviteDialog] = useState(false);
 	const [inviteEmail, setInviteEmail] = useState("");
+	const [sendingInvite, setSendingInvite] = useState(false);
 
 	const { data: friends = [], isLoading: friendsLoading } = useFriends();
 	const { data: pendingRequests = [], isLoading: pendingLoading } =
@@ -102,6 +103,7 @@ export default function FriendsPage() {
 	};
 
 	const handleSendInvite = async () => {
+		setSendingInvite(true);
 		try {
 			const response = await api.post('/friends/invite', { email: inviteEmail });
 			toast.success(response.data.message || 'Invite sent successfully!');
@@ -111,6 +113,8 @@ export default function FriendsPage() {
 		} catch (error) {
 			toast.error('Failed to send invite. Please try again.');
 			console.error(error);
+		} finally {
+			setSendingInvite(false);
 		}
 	};
 
@@ -288,6 +292,7 @@ export default function FriendsPage() {
 											setEmail("");
 										}}
 										className="flex-1 border-gray-700"
+										disabled={sendingInvite}
 									>
 										Cancel
 									</Button>
@@ -295,9 +300,19 @@ export default function FriendsPage() {
 										type="button"
 										onClick={handleSendInvite}
 										className="flex-1 bg-yellow-600 hover:bg-yellow-700"
+										disabled={sendingInvite}
 									>
-										<Mail className="w-4 h-4 mr-2" />
-										Send Invite
+										{sendingInvite ? (
+											<>
+												<Loader2 className="w-4 h-4 mr-2 animate-spin" />
+												Sending...
+											</>
+										) : (
+											<>
+												<Mail className="w-4 h-4 mr-2" />
+												Send Invite
+											</>
+										)}
 									</Button>
 								</div>
 							</motion.div>

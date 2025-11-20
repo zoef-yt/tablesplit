@@ -276,8 +276,9 @@ export class ExpenseService {
     // Delete the expense
     await Expense.findByIdAndDelete(expenseId);
 
-    // Recalculate ALL balances from scratch
+    // Recalculate ALL balances from scratch (including settlements)
     const expenses = await Expense.find({ groupId });
+    const settlements = await SettlementModel.find({ groupId });
     const userBalances = new Map<string, number>();
 
     for (const exp of expenses) {
@@ -296,13 +297,23 @@ export class ExpenseService {
       }
     }
 
-    // Update balances
+    // Apply all settlements
+    for (const settlement of settlements) {
+      const fromUserId = settlement.fromUserId.toString();
+      const toUserId = settlement.toUserId.toString();
+      if (!userBalances.has(fromUserId)) userBalances.set(fromUserId, 0);
+      if (!userBalances.has(toUserId)) userBalances.set(toUserId, 0);
+      userBalances.set(fromUserId, userBalances.get(fromUserId)! + settlement.amount);
+      userBalances.set(toUserId, userBalances.get(toUserId)! - settlement.amount);
+    }
+
+    // Update balances with rounding
     const balanceUpdates = [];
     for (const [userId, balance] of userBalances.entries()) {
       balanceUpdates.push(
         Balance.findOneAndUpdate(
           { groupId, userId },
-          { balance, lastUpdated: new Date() },
+          { balance: parseFloat(balance.toFixed(2)), lastUpdated: new Date() },
           { upsert: true }
         )
       );
@@ -381,8 +392,9 @@ export class ExpenseService {
     // Save expense first
     await expense.save();
 
-    // Recalculate ALL balances from scratch (more reliable than incremental)
+    // Recalculate ALL balances from scratch (including settlements)
     const expenses = await Expense.find({ groupId });
+    const settlements = await SettlementModel.find({ groupId });
     const userBalances = new Map<string, number>();
 
     for (const exp of expenses) {
@@ -401,13 +413,23 @@ export class ExpenseService {
       }
     }
 
-    // Update balances
+    // Apply all settlements
+    for (const settlement of settlements) {
+      const fromUserId = settlement.fromUserId.toString();
+      const toUserId = settlement.toUserId.toString();
+      if (!userBalances.has(fromUserId)) userBalances.set(fromUserId, 0);
+      if (!userBalances.has(toUserId)) userBalances.set(toUserId, 0);
+      userBalances.set(fromUserId, userBalances.get(fromUserId)! + settlement.amount);
+      userBalances.set(toUserId, userBalances.get(toUserId)! - settlement.amount);
+    }
+
+    // Update balances with rounding
     const balanceUpdates = [];
     for (const [userId, balance] of userBalances.entries()) {
       balanceUpdates.push(
         Balance.findOneAndUpdate(
           { groupId, userId },
-          { balance, lastUpdated: new Date() },
+          { balance: parseFloat(balance.toFixed(2)), lastUpdated: new Date() },
           { upsert: true }
         )
       );
@@ -432,8 +454,8 @@ export class ExpenseService {
     amount: number,
     userIds: string[]
   ): Array<{ userId: string; amount: number; percentage: number }> {
-    const perPerson = amount / userIds.length;
-    const percentage = 100 / userIds.length;
+    const perPerson = parseFloat((amount / userIds.length).toFixed(2));
+    const percentage = parseFloat((100 / userIds.length).toFixed(2));
 
     return userIds.map((userId) => ({
       userId,
@@ -444,16 +466,17 @@ export class ExpenseService {
 
   /**
    * Update balances after expense creation
-   * Now uses a more reliable approach: recalculate from all expenses
+   * Recalculates from all expenses AND settlements
    */
   private async updateBalances(
     groupId: string,
     _paidBy: string,
     _splits: Array<{ userId: string; amount: number }>
   ): Promise<IBalance[]> {
-    // Instead of incremental updates, recalculate all balances from scratch
+    // Recalculate all balances from scratch including expenses AND settlements
     // This prevents race conditions and ensures accuracy
     const expenses = await Expense.find({ groupId });
+    const settlements = await SettlementModel.find({ groupId });
     const userBalances = new Map<string, number>();
 
     // Calculate balances from all expenses
@@ -478,6 +501,32 @@ export class ExpenseService {
       }
     }
 
+    // Apply all settlements to balances
+    for (const settlement of settlements) {
+      const fromUserId = settlement.fromUserId.toString();
+      const toUserId = settlement.toUserId.toString();
+      const amount = settlement.amount;
+
+      // Initialize balances if not present
+      if (!userBalances.has(fromUserId)) {
+        userBalances.set(fromUserId, 0);
+      }
+      if (!userBalances.has(toUserId)) {
+        userBalances.set(toUserId, 0);
+      }
+
+      // Settlement: from pays to
+      // fromUser's balance increases (they paid off debt)
+      // toUser's balance decreases (they received payment)
+      userBalances.set(fromUserId, userBalances.get(fromUserId)! + amount);
+      userBalances.set(toUserId, userBalances.get(toUserId)! - amount);
+    }
+
+    // Round all balances to 2 decimal places
+    for (const [userId, balance] of userBalances.entries()) {
+      userBalances.set(userId, parseFloat(balance.toFixed(2)));
+    }
+
     // Update all balances in database
     const updates = [];
     for (const [userId, balance] of userBalances.entries()) {
@@ -492,7 +541,7 @@ export class ExpenseService {
 
     const results = await Promise.all(updates);
 
-    logger.info(`Updated balances for group ${groupId} using full recalculation`);
+    logger.info(`Updated balances for group ${groupId} using full recalculation (${expenses.length} expenses, ${settlements.length} settlements)`);
 
     return results;
   }
@@ -581,8 +630,9 @@ export class ExpenseService {
     // Get old balances
     const oldBalances = await this.getGroupBalances(userId, groupId);
 
-    // Get all expenses
+    // Get all expenses and settlements
     const expenses = await Expense.find({ groupId }).sort({ createdAt: 1 });
+    const settlements = await SettlementModel.find({ groupId });
 
     // Calculate fresh balances
     const userBalances = new Map<string, number>();
@@ -608,13 +658,23 @@ export class ExpenseService {
       }
     }
 
-    // Update all balances in database
+    // Apply all settlements
+    for (const settlement of settlements) {
+      const fromUserId = settlement.fromUserId.toString();
+      const toUserId = settlement.toUserId.toString();
+      if (!userBalances.has(fromUserId)) userBalances.set(fromUserId, 0);
+      if (!userBalances.has(toUserId)) userBalances.set(toUserId, 0);
+      userBalances.set(fromUserId, userBalances.get(fromUserId)! + settlement.amount);
+      userBalances.set(toUserId, userBalances.get(toUserId)! - settlement.amount);
+    }
+
+    // Update all balances in database with rounding
     const updates = [];
-    for (const [userId, balance] of userBalances.entries()) {
+    for (const [visitorId, balance] of userBalances.entries()) {
       updates.push(
         Balance.findOneAndUpdate(
-          { groupId, userId },
-          { balance, lastUpdated: new Date() },
+          { groupId, userId: visitorId },
+          { balance: parseFloat(balance.toFixed(2)), lastUpdated: new Date() },
           { upsert: true, new: true }
         )
       );
