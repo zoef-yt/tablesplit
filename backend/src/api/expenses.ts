@@ -15,7 +15,7 @@ router.use(authenticateToken);
  */
 router.post('/', validate(schemas.createExpense), async (req: AuthRequest, res: Response, next) => {
   try {
-    const { groupId, description, amount, paidBy, selectedMembers, category } = req.body;
+    const { groupId, description, amount, paidBy, selectedMembers, category, pendingEmails, customSplits } = req.body;
 
     const result = await expenseService.createExpense(
       req.userId!,
@@ -24,7 +24,9 @@ router.post('/', validate(schemas.createExpense), async (req: AuthRequest, res: 
       amount,
       paidBy,
       selectedMembers,
-      category
+      category,
+      pendingEmails,
+      customSplits
     );
 
     // Emit real-time update to all clients in the group
@@ -335,6 +337,25 @@ router.post('/group/:groupId/recalculate-balances', async (req: AuthRequest, res
       success: true,
       message: 'Balances recalculated successfully',
       data: result
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * GET /api/expenses/group/:groupId/summary
+ * Get expense summary for printable report
+ */
+router.get('/group/:groupId/summary', async (req: AuthRequest, res: Response, next) => {
+  try {
+    const { groupId } = req.params;
+
+    const summary = await expenseService.getExpenseSummary(req.userId!, groupId);
+
+    res.json({
+      success: true,
+      data: summary,
     });
   } catch (error) {
     next(error);

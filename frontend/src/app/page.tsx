@@ -1,10 +1,29 @@
 "use client";
 
+import { redirect } from "next/navigation";
 import { motion } from "framer-motion";
-import { Users, TrendingUp, Shield, ArrowRight } from "lucide-react";
+import { Users, TrendingUp, Shield, ArrowRight, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { useAuthStore } from "@/lib/store/auth";
 
 export default function HomePage() {
+	const user = useAuthStore((state) => state.user);
+	const isHydrated = useAuthStore((state) => state.isHydrated);
+
+	// Show loading while checking auth state
+	if (!isHydrated) {
+		return (
+			<div className="min-h-screen bg-gray-950 flex items-center justify-center">
+				<Loader2 className="w-12 h-12 text-primary-500 animate-spin" />
+			</div>
+		);
+	}
+
+	// Redirect logged-in users to groups page
+	if (user) {
+		redirect("/groups");
+	}
+
 	return (
 		<div className="min-h-screen bg-gradient-dark relative overflow-hidden">
 			{/* Animated background elements */}

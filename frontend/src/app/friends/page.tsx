@@ -44,6 +44,7 @@ export default function FriendsPage() {
 	const [showAddFriend, setShowAddFriend] = useState(false);
 	const [showInviteDialog, setShowInviteDialog] = useState(false);
 	const [inviteEmail, setInviteEmail] = useState("");
+	const [sendingInvite, setSendingInvite] = useState(false);
 
 	const { data: friends = [], isLoading: friendsLoading } = useFriends();
 	const { data: pendingRequests = [], isLoading: pendingLoading } =
@@ -102,6 +103,7 @@ export default function FriendsPage() {
 	};
 
 	const handleSendInvite = async () => {
+		setSendingInvite(true);
 		try {
 			const response = await api.post('/friends/invite', { email: inviteEmail });
 			toast.success(response.data.message || 'Invite sent successfully!');
@@ -111,6 +113,8 @@ export default function FriendsPage() {
 		} catch (error) {
 			toast.error('Failed to send invite. Please try again.');
 			console.error(error);
+		} finally {
+			setSendingInvite(false);
 		}
 	};
 
@@ -288,6 +292,7 @@ export default function FriendsPage() {
 											setEmail("");
 										}}
 										className="flex-1 border-gray-700"
+										disabled={sendingInvite}
 									>
 										Cancel
 									</Button>
@@ -295,9 +300,19 @@ export default function FriendsPage() {
 										type="button"
 										onClick={handleSendInvite}
 										className="flex-1 bg-yellow-600 hover:bg-yellow-700"
+										disabled={sendingInvite}
 									>
-										<Mail className="w-4 h-4 mr-2" />
-										Send Invite
+										{sendingInvite ? (
+											<>
+												<Loader2 className="w-4 h-4 mr-2 animate-spin" />
+												Sending...
+											</>
+										) : (
+											<>
+												<Mail className="w-4 h-4 mr-2" />
+												Send Invite
+											</>
+										)}
 									</Button>
 								</div>
 							</motion.div>
@@ -306,39 +321,39 @@ export default function FriendsPage() {
 				</AnimatePresence>
 
 				{/* Tabs */}
-				<div className="flex gap-2 mb-6 bg-gray-800/50 border border-gray-700 rounded-xl p-2">
+				<div className="flex flex-col sm:flex-row gap-2 mb-6 bg-gray-800/50 border border-gray-700 rounded-xl p-2">
 					<button
 						onClick={() => setActiveTab("friends")}
-						className={`flex-1 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+						className={`flex-1 px-3 sm:px-4 py-3 rounded-lg text-sm font-semibold transition-colors min-h-[44px] flex items-center justify-center gap-2 ${
 							activeTab === "friends"
 								? "bg-primary-600 text-white"
-								: "text-gray-400 hover:text-white"
+								: "text-gray-400 hover:text-white hover:bg-gray-800/50"
 						}`}
 					>
-						<Users className="w-4 h-4 inline mr-2" />
-						Friends ({friends.length})
+						<Users className="w-4 h-4 flex-shrink-0" />
+						<span>Friends ({friends.length})</span>
 					</button>
 					<button
 						onClick={() => setActiveTab("pending")}
-						className={`flex-1 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+						className={`flex-1 px-3 sm:px-4 py-3 rounded-lg text-sm font-semibold transition-colors min-h-[44px] flex items-center justify-center gap-2 ${
 							activeTab === "pending"
 								? "bg-primary-600 text-white"
-								: "text-gray-400 hover:text-white"
+								: "text-gray-400 hover:text-white hover:bg-gray-800/50"
 						}`}
 					>
-						<Mail className="w-4 h-4 inline mr-2" />
-						Requests ({pendingRequests.length})
+						<Mail className="w-4 h-4 flex-shrink-0" />
+						<span>Requests ({pendingRequests.length})</span>
 					</button>
 					<button
 						onClick={() => setActiveTab("sent")}
-						className={`flex-1 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+						className={`flex-1 px-3 sm:px-4 py-3 rounded-lg text-sm font-semibold transition-colors min-h-[44px] flex items-center justify-center gap-2 ${
 							activeTab === "sent"
 								? "bg-primary-600 text-white"
-								: "text-gray-400 hover:text-white"
+								: "text-gray-400 hover:text-white hover:bg-gray-800/50"
 						}`}
 					>
-						<Clock className="w-4 h-4 inline mr-2" />
-						Sent ({sentRequests.length})
+						<Clock className="w-4 h-4 flex-shrink-0" />
+						<span>Sent ({sentRequests.length})</span>
 					</button>
 				</div>
 

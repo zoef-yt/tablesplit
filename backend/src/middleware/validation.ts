@@ -53,6 +53,13 @@ export const schemas = {
       })
     ),
     selectedMembers: Joi.array().items(Joi.string()),
-    category: Joi.string().max(50).allow('').optional(), // Allow empty string and make optional
+    pendingEmails: Joi.array().items(Joi.string().email()).optional(),
+    category: Joi.string().max(50).allow('').optional(),
+    customSplits: Joi.array().items(
+      Joi.object({
+        oderId: Joi.string().required(),
+        amount: Joi.number().min(0).required(),
+      })
+    ).optional(),
   }),
 };

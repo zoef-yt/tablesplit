@@ -19,13 +19,19 @@ import type { User } from "@/types";
 interface AddFriendToGroupDialogProps {
 	groupId: string;
 	currentMembers: string[]; // Array of user IDs already in the group
+	open?: boolean;
+	onOpenChange?: (open: boolean) => void;
 }
 
 export function AddFriendToGroupDialog({
 	groupId,
 	currentMembers,
+	open,
+	onOpenChange,
 }: AddFriendToGroupDialogProps) {
-	const [isOpen, setIsOpen] = useState(false);
+	const [internalOpen, setInternalOpen] = useState(false);
+	const isOpen = open ?? internalOpen;
+	const setIsOpen = onOpenChange ?? setInternalOpen;
 	const [searchQuery, setSearchQuery] = useState("");
 
 	const { data: friends = [], isLoading } = useFriends();

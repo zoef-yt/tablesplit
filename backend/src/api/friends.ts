@@ -63,15 +63,17 @@ router.post('/invite', async (req: AuthRequest, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // Send platform invite email
-    await emailService.sendPlatformInvite(email, currentUser.name);
+    // Send platform invite email asynchronously (don't block the response)
+    emailService.sendPlatformInvite(email, currentUser.name).catch((err) => {
+      logger.error(`Failed to send platform invite email to ${email}:`, err);
+    });
 
     // Track gamification
     gamificationService.trackFriendInvited(req.userId!).catch((err) => {
       logger.error('Failed to track friend invited for gamification:', err);
     });
 
-    logger.info(`Platform invite sent from ${currentUser.email} to ${email}`);
+    logger.info(`Platform invite queued from ${currentUser.email} to ${email}`);
 
     return res.json({
       success: true,

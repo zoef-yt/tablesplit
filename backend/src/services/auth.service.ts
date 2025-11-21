@@ -7,6 +7,7 @@ import { UnauthorizedError, BadRequestError, ConflictError } from '../middleware
 import { logger } from '../utils/logger';
 import { env } from '../config/env';
 import { emailService } from './email.service';
+import { inviteService } from './invite.service';
 
 const JWT_SECRET = env.JWT_SECRET;
 const MAGIC_LINK_EXPIRY = env.MAGIC_LINK_EXPIRY;
@@ -41,6 +42,15 @@ export class AuthService {
     });
 
     logger.info(`New user signed up: ${user._id}`);
+
+    // Process pending invites for this email (don't block signup if it fails)
+    inviteService.processSignupInvites(user._id.toString(), normalizedEmail).then((count) => {
+      if (count > 0) {
+        logger.info(`Processed ${count} pending invites for new user ${user._id}`);
+      }
+    }).catch((error) => {
+      logger.error('Failed to process pending invites:', error);
+    });
 
     // Send welcome email (don't block signup if it fails)
     emailService.sendWelcomeEmail(user.email, user.name).catch((error) => {

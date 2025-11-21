@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Wallet, Mail, Lock, Loader2, Sparkles } from "lucide-react";
+import { Wallet, Mail, Lock, Loader2, Sparkles, Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -29,6 +29,7 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 export default function LoginPage() {
 	const [magicLinkSent, setMagicLinkSent] = useState(false);
 	const [emailForMagicLink, setEmailForMagicLink] = useState("");
+	const [showPassword, setShowPassword] = useState(false);
 
 	const loginMutation = useLogin();
 
@@ -202,10 +203,21 @@ export default function LoginPage() {
 													<Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
 													<Input
 														{...field}
-														type="password"
+														type={showPassword ? "text" : "password"}
 														placeholder="••••••••"
-														className="pl-10 bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 focus:border-primary-500"
+														className="pl-10 pr-10 bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 focus:border-primary-500"
 													/>
+													<button
+														type="button"
+														onClick={() => setShowPassword(!showPassword)}
+														className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
+													>
+														{showPassword ? (
+															<EyeOff className="w-5 h-5" />
+														) : (
+															<Eye className="w-5 h-5" />
+														)}
+													</button>
 												</div>
 											</FormControl>
 											<FormMessage />
