@@ -2,10 +2,12 @@ import { Expense, IExpense } from '../models/Expense';
 import { Balance, IBalance } from '../models/Balance';
 import { Settlement as SettlementModel, ISettlement } from '../models/Settlement';
 import { Group } from '../models/Group';
+import { User } from '../models/User';
 import { NotFoundError, ForbiddenError } from '../middleware/errorHandler';
 import { logger } from '../utils/logger';
 import { Types } from 'mongoose';
 import { gamificationService } from './gamification.service';
+import { inviteService } from './invite.service';
 
 interface CalculatedSettlement {
   from: string;
@@ -24,7 +26,8 @@ export class ExpenseService {
     amount: number,
     paidBy: string,
     selectedMembers: string[],
-    category?: string
+    category?: string,
+    pendingEmails?: string[]
   ): Promise<{ expense: IExpense; updatedBalances: IBalance[] }> {
     const group = await Group.findById(groupId);
 
@@ -38,8 +41,51 @@ export class ExpenseService {
       throw new ForbiddenError('You are not a member of this group');
     }
 
-    // Calculate equal splits
-    const splits = this.equalSplit(amount, selectedMembers);
+    // Calculate total participants (members + pending emails)
+    const totalParticipants = selectedMembers.length + (pendingEmails?.length || 0);
+    const perPerson = parseFloat((amount / totalParticipants).toFixed(2));
+    const percentage = parseFloat((100 / totalParticipants).toFixed(2));
+
+    // Create splits for existing members
+    const splits: Array<{
+      userId?: Types.ObjectId;
+      pendingEmail?: string;
+      amount: number;
+      percentage: number;
+      status: 'active' | 'pending';
+    }> = selectedMembers.map((memberId) => ({
+      userId: new Types.ObjectId(memberId),
+      amount: perPerson,
+      percentage,
+      status: 'active' as const,
+    }));
+
+    // Add pending splits for emails
+    if (pendingEmails && pendingEmails.length > 0) {
+      for (const email of pendingEmails) {
+        const normalizedEmail = email.toLowerCase().trim();
+
+        // Check if user already exists
+        const existingUser = await User.findOne({ email: normalizedEmail });
+        if (existingUser) {
+          // Add as regular member instead
+          splits.push({
+            userId: existingUser._id,
+            amount: perPerson,
+            percentage,
+            status: 'active',
+          });
+        } else {
+          // Add as pending
+          splits.push({
+            pendingEmail: normalizedEmail,
+            amount: perPerson,
+            percentage,
+            status: 'pending',
+          });
+        }
+      }
+    }
 
     // Create expense
     const expense = await Expense.create({
@@ -52,8 +98,33 @@ export class ExpenseService {
       date: new Date(),
     });
 
-    // Update balances atomically
-    const updatedBalances = await this.updateBalances(groupId, paidBy, splits);
+    // Create invites for pending emails
+    if (pendingEmails && pendingEmails.length > 0) {
+      for (const email of pendingEmails) {
+        const normalizedEmail = email.toLowerCase().trim();
+        // Check if not already a user
+        const existingUser = await User.findOne({ email: normalizedEmail });
+        if (!existingUser) {
+          inviteService.createInvite(
+            userId,
+            normalizedEmail,
+            groupId,
+            expense._id.toString()
+          ).catch((err) => {
+            logger.error(`Failed to create invite for ${normalizedEmail}:`, err);
+          });
+        }
+      }
+    }
+
+    // Update balances atomically (only for active splits)
+    const activeSplits = splits
+      .filter((s) => s.status === 'active' && s.userId)
+      .map((s) => ({
+        userId: s.userId!.toString(),
+        amount: s.amount,
+      }));
+    const updatedBalances = await this.updateBalances(groupId, paidBy, activeSplits);
 
     // Populate expense with user information before returning
     await expense.populate('paidBy', 'name email avatar');
@@ -64,7 +135,7 @@ export class ExpenseService {
       logger.error('Failed to track expense for gamification:', err);
     });
 
-    logger.info(`Expense created: ${expense._id} in group ${groupId}`);
+    logger.info(`Expense created: ${expense._id} in group ${groupId} with ${splits.length} splits (${pendingEmails?.length || 0} pending)`);
 
     return { expense, updatedBalances };
   }
@@ -267,10 +338,12 @@ export class ExpenseService {
     }
 
     // Reverse the balance changes by recalculating from scratch after deletion
-    const splitsAsStrings = expense.splits.map(s => ({
-      userId: s.userId.toString(),
-      amount: s.amount
-    }));
+    const splitsAsStrings = expense.splits
+      .filter(s => s.userId)
+      .map(s => ({
+        userId: s.userId!.toString(),
+        amount: s.amount
+      }));
     await this.reverseBalances(groupId, expense.paidBy.toString(), splitsAsStrings);
 
     // Delete the expense
@@ -284,6 +357,8 @@ export class ExpenseService {
     for (const exp of expenses) {
       const expPaidBy = exp.paidBy.toString();
       for (const split of exp.splits) {
+        // Skip pending splits without userId
+        if (!split.userId) continue;
         const splitUserId = split.userId.toString();
         if (!userBalances.has(splitUserId)) {
           userBalances.set(splitUserId, 0);
@@ -363,10 +438,12 @@ export class ExpenseService {
     }
 
     // Reverse old balance changes
-    const oldSplitsAsStrings = expense.splits.map(s => ({
-      userId: s.userId.toString(),
-      amount: s.amount
-    }));
+    const oldSplitsAsStrings = expense.splits
+      .filter(s => s.userId)
+      .map(s => ({
+        userId: s.userId!.toString(),
+        amount: s.amount
+      }));
     await this.reverseBalances(groupId, expense.paidBy.toString(), oldSplitsAsStrings);
 
     // Update expense fields
@@ -376,7 +453,9 @@ export class ExpenseService {
     // Recalculate splits if amount or members changed
     if (amount !== undefined || selectedMembers !== undefined) {
       const newAmount = amount !== undefined ? amount : expense.amount;
-      const newMembers = selectedMembers !== undefined ? selectedMembers : expense.splits.map(s => s.userId.toString());
+      const newMembers = selectedMembers !== undefined
+        ? selectedMembers
+        : expense.splits.filter(s => s.userId).map(s => s.userId!.toString());
 
       expense.amount = newAmount;
       const newSplits = this.equalSplit(newAmount, newMembers);
@@ -385,7 +464,8 @@ export class ExpenseService {
       expense.splits = newSplits.map(s => ({
         userId: new Types.ObjectId(s.userId),
         amount: s.amount,
-        percentage: s.percentage
+        percentage: s.percentage,
+        status: s.status
       }));
     }
 
@@ -400,6 +480,8 @@ export class ExpenseService {
     for (const exp of expenses) {
       const expPaidBy = exp.paidBy.toString();
       for (const split of exp.splits) {
+        // Skip pending splits without userId
+        if (!split.userId) continue;
         const splitUserId = split.userId.toString();
         if (!userBalances.has(splitUserId)) {
           userBalances.set(splitUserId, 0);
@@ -453,7 +535,7 @@ export class ExpenseService {
   private equalSplit(
     amount: number,
     userIds: string[]
-  ): Array<{ userId: string; amount: number; percentage: number }> {
+  ): Array<{ userId: string; amount: number; percentage: number; status: 'active' | 'pending' }> {
     const perPerson = parseFloat((amount / userIds.length).toFixed(2));
     const percentage = parseFloat((100 / userIds.length).toFixed(2));
 
@@ -461,6 +543,7 @@ export class ExpenseService {
       userId,
       amount: perPerson,
       percentage,
+      status: 'active' as const,
     }));
   }
 
@@ -484,6 +567,8 @@ export class ExpenseService {
       const expensePaidBy = expense.paidBy.toString();
 
       for (const split of expense.splits) {
+        // Skip pending splits without userId
+        if (!split.userId) continue;
         const splitUserId = split.userId.toString();
 
         if (!userBalances.has(splitUserId)) {
@@ -641,6 +726,8 @@ export class ExpenseService {
       const paidById = expense.paidBy.toString();
 
       for (const split of expense.splits) {
+        // Skip pending splits without userId
+        if (!split.userId) continue;
         const splitUserId = split.userId.toString();
 
         if (!userBalances.has(splitUserId)) {

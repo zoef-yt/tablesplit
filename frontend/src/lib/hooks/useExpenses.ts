@@ -54,6 +54,7 @@ export function useCreateExpense(groupId: string) {
 			amount: number;
 			paidBy: string;
 			selectedMembers: string[];
+			pendingEmails?: string[];
 			category?: string;
 		}) => {
 			const response = await apiHelpers.post<{

@@ -14,6 +14,7 @@ import groupRoutes from './api/groups';
 import expenseRoutes from './api/expenses';
 import friendsRoutes from './api/friends';
 import gamificationRoutes from './api/gamification';
+import inviteRoutes from './api/invites';
 
 const app = express();
 const httpServer = createServer(app);
@@ -67,6 +68,7 @@ app.use('/api/groups', groupRoutes);
 app.use('/api/expenses', expenseRoutes);
 app.use('/api/friends', friendsRoutes);
 app.use('/api/gamification', gamificationRoutes);
+app.use('/api/invites', inviteRoutes);
 
 // Error handling
 app.use(errorHandler);

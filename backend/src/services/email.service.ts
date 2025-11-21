@@ -57,7 +57,7 @@ export class EmailService {
   }
 
   private compileTemplates(): void {
-    const templates = ['magic-link', 'invite', 'settlement-reminder', 'welcome'];
+    const templates = ['magic-link', 'invite', 'settlement-reminder', 'welcome', 'split-invite'];
 
     templates.forEach((templateName) => {
       try {
@@ -174,6 +174,36 @@ export class EmailService {
         inviterName,
         signupUrl,
         frontendUrl,
+      },
+    });
+  }
+
+  async sendSplitInvite(
+    email: string,
+    inviterName: string,
+    groupName: string,
+    token: string,
+    expenseDescription?: string,
+    expenseAmount?: number,
+    userShare?: number
+  ): Promise<void> {
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const signupUrl = `${frontendUrl}/auth/signup?token=${token}`;
+    const optOutUrl = `${frontendUrl}/invites/opt-out?email=${encodeURIComponent(email)}`;
+
+    await this.sendEmail({
+      to: email,
+      subject: `${inviterName} invited you to split expenses on TableSplit`,
+      template: 'split-invite',
+      context: {
+        inviterName,
+        groupName,
+        signupUrl,
+        optOutUrl,
+        expenseDescription,
+        expenseAmount,
+        userShare,
+        hasExpense: !!expenseDescription,
       },
     });
   }
@@ -302,6 +332,48 @@ export class EmailService {
             <p style="color: #999; font-size: 14px; text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee;">
               Once you sign up, you can connect with ${context.inviterName} and start splitting expenses!<br>
               See you at the table! 🎰
+            </p>
+          </div>
+        </body>
+        </html>
+      `;
+    }
+
+    if (templateName === 'split-invite') {
+      return `
+        <!DOCTYPE html>
+        <html>
+        <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;">
+          <div style="background-color: white; border-radius: 12px; padding: 40px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <div style="text-align: center; margin-bottom: 30px;">
+              <div style="display: inline-block; width: 80px; height: 80px; background: linear-gradient(135deg, #10b981, #1a4d2e); border-radius: 50%; margin-bottom: 20px;">
+                <span style="font-size: 36px; line-height: 80px;">💰</span>
+              </div>
+              <h1 style="color: #1a4d2e; margin: 0; font-size: 28px;">You've Been Added to a Split!</h1>
+            </div>
+
+            <p style="font-size: 18px; color: #333; margin-bottom: 20px;">
+              <strong>${context.inviterName}</strong> has added you to an expense on TableSplit and wants to split the cost with you.
+            </p>
+
+            <div style="background-color: #f0fdf4; border-left: 4px solid #10b981; padding: 20px; margin: 30px 0; border-radius: 4px;">
+              <p style="margin: 0; color: #333;"><strong>Group:</strong> ${context.groupName}</p>
+              ${context.hasExpense ? `
+              <p style="margin: 10px 0 0 0; color: #333;"><strong>Expense:</strong> ${context.expenseDescription} - ₹${context.expenseAmount}</p>
+              <p style="margin: 10px 0 0 0; color: #333;"><strong>Your share:</strong> ₹${context.userShare}</p>
+              ` : ''}
+            </div>
+
+            <p style="color: #666; line-height: 1.6;">
+              Click below to sign up and see your expenses. This invite expires in 7 days.
+            </p>
+
+            <div style="text-align: center; margin: 40px 0;">
+              <a href="${context.signupUrl}" style="display: inline-block; padding: 16px 32px; background: linear-gradient(135deg, #10b981, #1a4d2e); color: white; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">Sign Up Now</a>
+            </div>
+
+            <p style="color: #999; font-size: 12px; text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee;">
+              Don't want to receive these emails? <a href="${context.optOutUrl}" style="color: #666;">Opt out</a>
             </p>
           </div>
         </body>

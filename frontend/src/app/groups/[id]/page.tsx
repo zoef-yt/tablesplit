@@ -16,6 +16,8 @@ import {
 	Check,
 	TrendingUp,
 	FileText,
+	Mail,
+	X,
 } from "lucide-react";
 import { useAuthStore } from "@/lib/store/auth";
 import { useGroup, useInviteToGroup } from "@/lib/hooks/useGroups";
@@ -78,6 +80,8 @@ export default function GroupDetailPage() {
 	const [inviteLink, setInviteLink] = useState("");
 	const [copied, setCopied] = useState(false);
 	const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
+	const [pendingEmails, setPendingEmails] = useState<string[]>([]);
+	const [emailInput, setEmailInput] = useState("");
 	const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
 	const [isExpenseDetailOpen, setIsExpenseDetailOpen] = useState(false);
 	const [showSettlementHistory, setShowSettlementHistory] = useState(false);
@@ -150,10 +154,10 @@ export default function GroupDetailPage() {
 	const onAddExpense = async (values: ExpenseFormValues) => {
 		if (!user || !group) return;
 
-		// Validate selected members
-		if (selectedMembers.length === 0) {
+		// Validate selected members or pending emails
+		if (selectedMembers.length === 0 && pendingEmails.length === 0) {
 			form.setError("root", {
-				message: "Please select at least one person to split with",
+				message: "Please select at least one person or add an email to split with",
 			});
 			return;
 		}
@@ -164,11 +168,14 @@ export default function GroupDetailPage() {
 				amount: values.amount,
 				paidBy: user._id,
 				selectedMembers: selectedMembers,
+				pendingEmails: pendingEmails.length > 0 ? pendingEmails : undefined,
 				category: values.category || undefined, // Don't send empty string
 			});
 
 			setIsExpenseDialogOpen(false);
 			form.reset();
+			setPendingEmails([]);
+			setEmailInput("");
 			// Reset selected members to all members
 			const memberIds: string[] = [];
 			for (const m of group.members) {
@@ -187,6 +194,43 @@ export default function GroupDetailPage() {
 						: "Failed to create expense. Please try again.",
 			});
 		}
+	};
+
+	const addPendingEmail = () => {
+		const email = emailInput.trim().toLowerCase();
+		if (!email) return;
+
+		// Simple email validation
+		const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+		if (!emailRegex.test(email)) {
+			form.setError("root", { message: "Please enter a valid email address" });
+			return;
+		}
+
+		// Check if already added
+		if (pendingEmails.includes(email)) {
+			form.setError("root", { message: "This email is already added" });
+			return;
+		}
+
+		// Check if email belongs to existing member
+		const existingMember = group?.members.find((m) => {
+			const memberUser = typeof m.userId === "object" && m.userId ? m.userId : null;
+			return memberUser?.email?.toLowerCase() === email;
+		});
+
+		if (existingMember) {
+			form.setError("root", { message: "This person is already a group member" });
+			return;
+		}
+
+		setPendingEmails([...pendingEmails, email]);
+		setEmailInput("");
+		form.clearErrors("root");
+	};
+
+	const removePendingEmail = (email: string) => {
+		setPendingEmails(pendingEmails.filter((e) => e !== email));
 	};
 
 	const onGenerateInvite = async () => {
@@ -742,12 +786,66 @@ export default function GroupDetailPage() {
 													);
 												})}
 											</div>
-											{selectedMembers.length === 0 && (
+											{selectedMembers.length === 0 && pendingEmails.length === 0 && (
 												<p className="text-red-500 text-xs mt-1">
-													Select at least one person
+													Select at least one person or add an email
 												</p>
 											)}
 										</div>
+
+										{/* Add non-member by email */}
+										<div className="space-y-2">
+											<FormLabel className="text-gray-300 flex items-center gap-2">
+												<Mail className="w-4 h-4" />
+												Invite by email (not in group)
+											</FormLabel>
+											<div className="flex gap-2">
+												<Input
+													type="email"
+													placeholder="email@example.com"
+													value={emailInput}
+													onChange={(e) => setEmailInput(e.target.value)}
+													onKeyDown={(e) => {
+														if (e.key === "Enter") {
+															e.preventDefault();
+															addPendingEmail();
+														}
+													}}
+													className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500"
+												/>
+												<Button
+													type="button"
+													onClick={addPendingEmail}
+													variant="outline"
+													className="border-gray-700 text-white hover:bg-gray-700"
+												>
+													Add
+												</Button>
+											</div>
+											{pendingEmails.length > 0 && (
+												<div className="space-y-1">
+													{pendingEmails.map((email) => (
+														<div
+															key={email}
+															className="flex items-center justify-between p-2 bg-yellow-500/10 border border-yellow-500/30 rounded text-sm"
+														>
+															<span className="text-yellow-200">{email}</span>
+															<button
+																type="button"
+																onClick={() => removePendingEmail(email)}
+																className="text-yellow-400 hover:text-yellow-300"
+															>
+																<X className="w-4 h-4" />
+															</button>
+														</div>
+													))}
+													<p className="text-xs text-gray-400">
+														These people will receive an invite email
+													</p>
+												</div>
+											)}
+										</div>
+
 										{form.formState.errors.root && (
 											<p className="text-red-500 text-sm">
 												{form.formState.errors.root.message}

@@ -12,6 +12,8 @@ import {
 	XCircle,
 	Loader2,
 	AlertTriangle,
+	Mail,
+	RefreshCw,
 } from "lucide-react";
 import { Group, User } from "@/types";
 import { Button } from "@/components/ui/button";
@@ -28,6 +30,21 @@ import {
 	useRemoveMember,
 	useDeleteGroup,
 } from "@/lib/hooks/useGroups";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { api } from "@/lib/api";
+import { toast } from "sonner";
+
+interface PendingInvite {
+	_id: string;
+	email: string;
+	invitedBy: {
+		_id: string;
+		name: string;
+	};
+	status: string;
+	createdAt: string;
+	expiresAt: string;
+}
 
 interface GroupSettingsProps {
 	group: Group;
@@ -43,6 +60,44 @@ export function GroupSettings({ group, currentUserId }: GroupSettingsProps) {
 	const updateGroupMutation = useUpdateGroup(group._id);
 	const removeMemberMutation = useRemoveMember(group._id);
 	const deleteGroupMutation = useDeleteGroup();
+	const queryClient = useQueryClient();
+
+	// Fetch pending invites for this group
+	const { data: pendingInvites = [], isLoading: invitesLoading } = useQuery({
+		queryKey: ["invites", group._id],
+		queryFn: async () => {
+			const response = await api.get(`/invites/group/${group._id}`);
+			return response.data.data as PendingInvite[];
+		},
+		enabled: isOpen,
+	});
+
+	// Resend invite mutation
+	const resendInviteMutation = useMutation({
+		mutationFn: async (inviteId: string) => {
+			await api.post(`/invites/${inviteId}/resend`);
+		},
+		onSuccess: () => {
+			toast.success("Invite resent successfully");
+		},
+		onError: () => {
+			toast.error("Failed to resend invite");
+		},
+	});
+
+	// Cancel invite mutation
+	const cancelInviteMutation = useMutation({
+		mutationFn: async (inviteId: string) => {
+			await api.delete(`/invites/${inviteId}`);
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ["invites", group._id] });
+			toast.success("Invite cancelled");
+		},
+		onError: () => {
+			toast.error("Failed to cancel invite");
+		},
+	});
 
 	// Check if current user is the creator (first member)
 	const isCreator =
@@ -260,6 +315,67 @@ export function GroupSettings({ group, currentUserId }: GroupSettingsProps) {
 							})}
 						</div>
 					</div>
+
+					{/* Pending Invites */}
+					{pendingInvites.length > 0 && (
+						<div className="p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/30">
+							<h3 className="text-lg font-bold text-yellow-400 mb-3 flex items-center gap-2">
+								<Mail className="w-5 h-5" />
+								Pending Invites ({pendingInvites.length})
+							</h3>
+							<div className="space-y-2 max-h-48 overflow-y-auto">
+								{invitesLoading ? (
+									<div className="flex justify-center py-4">
+										<Loader2 className="w-6 h-6 animate-spin text-yellow-400" />
+									</div>
+								) : (
+									pendingInvites.map((invite) => (
+										<div
+											key={invite._id}
+											className="p-3 rounded-lg bg-gray-800/50 border border-gray-700/50 flex items-center justify-between"
+										>
+											<div>
+												<p className="text-white font-medium text-sm">
+													{invite.email}
+												</p>
+												<p className="text-gray-400 text-xs">
+													Invited by {invite.invitedBy.name}
+												</p>
+											</div>
+											<div className="flex gap-2">
+												<Button
+													onClick={() => resendInviteMutation.mutate(invite._id)}
+													variant="outline"
+													size="sm"
+													className="border-gray-700 hover:bg-gray-700 text-gray-300"
+													disabled={resendInviteMutation.isPending}
+												>
+													{resendInviteMutation.isPending ? (
+														<Loader2 className="w-3 h-3 animate-spin" />
+													) : (
+														<RefreshCw className="w-3 h-3" />
+													)}
+												</Button>
+												<Button
+													onClick={() => cancelInviteMutation.mutate(invite._id)}
+													variant="outline"
+													size="sm"
+													className="border-red-500/30 hover:bg-red-500/10 text-red-400"
+													disabled={cancelInviteMutation.isPending}
+												>
+													{cancelInviteMutation.isPending ? (
+														<Loader2 className="w-3 h-3 animate-spin" />
+													) : (
+														<X className="w-3 h-3" />
+													)}
+												</Button>
+											</div>
+										</div>
+									))
+								)}
+							</div>
+						</div>
+					)}
 
 					{/* Danger Zone */}
 					{isCreator && (
