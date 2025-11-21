@@ -1118,11 +1118,23 @@ export class ExpenseService {
       if (item.type === 'expense') {
         const expense = item.data;
         const paidByObj = expense.paidBy as any;
+
+        // Skip if paidBy user is not populated (deleted user)
+        if (!paidByObj || !paidByObj._id) {
+          continue;
+        }
+
         const paidById = paidByObj._id.toString();
 
         // Update balances for this expense
         for (const split of expense.splits) {
           const splitUserObj = split.userId as any;
+
+          // Skip if split user is not populated (deleted user)
+          if (!splitUserObj || !splitUserObj._id) {
+            continue;
+          }
+
           const splitUserId = splitUserObj._id.toString();
 
           if (splitUserId === paidById) {
@@ -1142,17 +1154,24 @@ export class ExpenseService {
             name: paidByObj.name,
           },
           category: expense.category,
-          splits: expense.splits.map((s: any) => ({
-            userId: s.userId._id.toString(),
-            userName: s.userId.name,
-            amount: s.amount,
-          })),
+          splits: expense.splits
+            .filter((s: any) => s.userId && s.userId._id)
+            .map((s: any) => ({
+              userId: s.userId._id.toString(),
+              userName: s.userId.name,
+              amount: s.amount,
+            })),
           runningBalances: { ...runningBalances },
         });
       } else {
         const settlement = item.data;
         const fromUserObj = settlement.fromUserId as any;
         const toUserObj = settlement.toUserId as any;
+
+        // Skip if users are not populated (deleted users)
+        if (!fromUserObj || !fromUserObj._id || !toUserObj || !toUserObj._id) {
+          continue;
+        }
 
         // Update balances for this settlement
         runningBalances[fromUserObj._id.toString()] += settlement.amount;
@@ -1202,10 +1221,14 @@ export class ExpenseService {
         if (item.type === 'expense') {
           const expense = item.data;
           const paidByObj = expense.paidBy as any;
+
+          // Skip if paidBy is not populated
+          if (!paidByObj || !paidByObj._id) continue;
+
           const paidById = paidByObj._id.toString();
 
           // Find this member's split
-          const memberSplit = expense.splits.find((s: any) => s.userId._id.toString() === member._id);
+          const memberSplit = expense.splits.find((s: any) => s.userId && s.userId._id && s.userId._id.toString() === member._id);
           if (!memberSplit) continue; // Member not involved in this expense
 
           const youPaid = paidById === member._id ? expense.amount : 0;
@@ -1236,6 +1259,9 @@ export class ExpenseService {
           const settlement = item.data;
           const fromUserObj = settlement.fromUserId as any;
           const toUserObj = settlement.toUserId as any;
+
+          // Skip if users are not populated
+          if (!fromUserObj || !fromUserObj._id || !toUserObj || !toUserObj._id) continue;
 
           // Check if this member is involved
           if (fromUserObj._id.toString() === member._id) {
