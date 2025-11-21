@@ -27,7 +27,8 @@ export class ExpenseService {
     paidBy: string,
     selectedMembers: string[],
     category?: string,
-    pendingEmails?: string[]
+    pendingEmails?: string[],
+    customSplits?: { oderId: string; amount: number }[]
   ): Promise<{ expense: IExpense; updatedBalances: IBalance[] }> {
     const group = await Group.findById(groupId);
 
@@ -41,27 +42,49 @@ export class ExpenseService {
       throw new ForbiddenError('You are not a member of this group');
     }
 
-    // Calculate total participants (members + pending emails)
-    const totalParticipants = selectedMembers.length + (pendingEmails?.length || 0);
-    const perPerson = parseFloat((amount / totalParticipants).toFixed(2));
-    const percentage = parseFloat((100 / totalParticipants).toFixed(2));
-
-    // Create splits for existing members
+    // Calculate splits based on whether custom splits are provided
     const splits: Array<{
       userId?: Types.ObjectId;
       pendingEmail?: string;
       amount: number;
       percentage: number;
       status: 'active' | 'pending';
-    }> = selectedMembers.map((memberId) => ({
-      userId: new Types.ObjectId(memberId),
-      amount: perPerson,
-      percentage,
-      status: 'active' as const,
-    }));
+    }> = [];
 
-    // Add pending splits for emails
-    if (pendingEmails && pendingEmails.length > 0) {
+    if (customSplits && customSplits.length > 0) {
+      // Use custom split amounts
+      for (const customSplit of customSplits) {
+        const percentage = parseFloat(((customSplit.amount / amount) * 100).toFixed(2));
+        splits.push({
+          userId: new Types.ObjectId(customSplit.oderId),
+          amount: parseFloat(customSplit.amount.toFixed(2)),
+          percentage,
+          status: 'active' as const,
+        });
+      }
+    } else {
+      // Calculate equal splits
+      const totalParticipants = selectedMembers.length + (pendingEmails?.length || 0);
+      const perPerson = parseFloat((amount / totalParticipants).toFixed(2));
+      const percentage = parseFloat((100 / totalParticipants).toFixed(2));
+
+      // Create splits for existing members
+      for (const memberId of selectedMembers) {
+        splits.push({
+          userId: new Types.ObjectId(memberId),
+          amount: perPerson,
+          percentage,
+          status: 'active' as const,
+        });
+      }
+    }
+
+    // Add pending splits for emails (only for equal splits - custom splits don't support pending emails)
+    if (pendingEmails && pendingEmails.length > 0 && !customSplits) {
+      const totalParticipants = selectedMembers.length + pendingEmails.length;
+      const perPerson = parseFloat((amount / totalParticipants).toFixed(2));
+      const percentage = parseFloat((100 / totalParticipants).toFixed(2));
+
       for (const email of pendingEmails) {
         const normalizedEmail = email.toLowerCase().trim();
 

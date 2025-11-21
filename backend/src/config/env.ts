@@ -113,12 +113,17 @@ function validateEnv(): EnvConfig {
     return num;
   };
 
+  // Determine database name based on environment
+  const nodeEnv = process.env.NODE_ENV || 'development';
+  const isProduction = nodeEnv === 'production';
+  const defaultDbName = isProduction ? 'table' : 'table-dev';
+
   // Validate all required environment variables
   const config: EnvConfig = {
-    // MongoDB
+    // MongoDB - use 'table' in production, 'table-dev' otherwise
     MONGODB_URI: requireString(
       'MONGODB_URI',
-      'mongodb://localhost:27017/tablesplit',
+      `mongodb://localhost:27017/${defaultDbName}`,
       (val) => val.startsWith('mongodb://')
     ),
 

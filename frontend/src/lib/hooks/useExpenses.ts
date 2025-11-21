@@ -56,6 +56,7 @@ export function useCreateExpense(groupId: string) {
 			selectedMembers: string[];
 			pendingEmails?: string[];
 			category?: string;
+			customSplits?: { oderId: string; amount: number }[];
 		}) => {
 			const response = await apiHelpers.post<{
 				expense: Expense;

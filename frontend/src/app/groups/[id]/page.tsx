@@ -22,6 +22,10 @@ import {
 	Settings,
 	UserRoundPlus,
 	Link as LinkIcon,
+	Search,
+	Filter,
+	ChevronDown,
+	ArrowUpDown,
 } from "lucide-react";
 import { useAuthStore } from "@/lib/store/auth";
 import { useGroup, useInviteToGroup } from "@/lib/hooks/useGroups";
@@ -81,6 +85,8 @@ const expenseSchema = z.object({
 
 type ExpenseFormValues = z.infer<typeof expenseSchema>;
 
+type SplitType = "equal" | "custom" | "percentage";
+
 export default function GroupDetailPage() {
 	const params = useParams();
 	const router = useRouter();
@@ -100,6 +106,18 @@ export default function GroupDetailPage() {
 	const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 	const [selectedMemberForTransactions, setSelectedMemberForTransactions] = useState<string | null>(null);
 	const [isMemberTransactionsOpen, setIsMemberTransactionsOpen] = useState(false);
+
+	// Search and filter state
+	const [searchQuery, setSearchQuery] = useState("");
+	const [categoryFilter, setCategoryFilter] = useState<string>("");
+	const [payerFilter, setPayerFilter] = useState<string>("");
+	const [sortBy, setSortBy] = useState<"date-desc" | "date-asc" | "amount-desc" | "amount-asc">("date-desc");
+	const [showFilters, setShowFilters] = useState(false);
+
+	// Custom split state
+	const [splitType, setSplitType] = useState<SplitType>("equal");
+	const [customAmounts, setCustomAmounts] = useState<Record<string, number>>({});
+	const [customPercentages, setCustomPercentages] = useState<Record<string, number>>({});
 
 	// Track if we've emitted an activity (to avoid emitting null on initial render)
 	const hasEmittedActivityRef = useRef(false);
@@ -177,6 +195,35 @@ export default function GroupDetailPage() {
 			return;
 		}
 
+		// Validate custom splits
+		let customSplits: { oderId: string; amount: number }[] | undefined;
+
+		if (splitType === "custom") {
+			const totalCustom = selectedMembers.reduce((sum, id) => sum + (customAmounts[id] || 0), 0);
+			if (Math.abs(totalCustom - values.amount) > 0.01) {
+				form.setError("root", {
+					message: `Custom amounts (₹${totalCustom.toFixed(2)}) must equal total (₹${values.amount.toFixed(2)})`,
+				});
+				return;
+			}
+			customSplits = selectedMembers.map((id) => ({
+				oderId: id,
+				amount: customAmounts[id] || 0,
+			}));
+		} else if (splitType === "percentage") {
+			const totalPercent = selectedMembers.reduce((sum, id) => sum + (customPercentages[id] || 0), 0);
+			if (Math.abs(totalPercent - 100) > 0.01) {
+				form.setError("root", {
+					message: `Percentages must equal 100% (currently ${totalPercent.toFixed(1)}%)`,
+				});
+				return;
+			}
+			customSplits = selectedMembers.map((id) => ({
+				oderId: id,
+				amount: (values.amount * (customPercentages[id] || 0)) / 100,
+			}));
+		}
+
 		try {
 			await createExpenseMutation.mutateAsync({
 				description: values.description,
@@ -184,13 +231,17 @@ export default function GroupDetailPage() {
 				paidBy: user._id,
 				selectedMembers: selectedMembers,
 				pendingEmails: pendingEmails.length > 0 ? pendingEmails : undefined,
-				category: values.category || undefined, // Don't send empty string
+				category: values.category || undefined,
+				customSplits: customSplits,
 			});
 
 			setIsExpenseDialogOpen(false);
 			form.reset();
 			setPendingEmails([]);
 			setEmailInput("");
+			setSplitType("equal");
+			setCustomAmounts({});
+			setCustomPercentages({});
 			// Reset selected members to all members
 			const memberIds: string[] = [];
 			for (const m of group.members) {
@@ -727,8 +778,107 @@ export default function GroupDetailPage() {
 
 				{/* Expenses List */}
 				<div className="mb-20">
-					<div className="flex items-center justify-between mb-4">
-						<h2 className="text-xl font-bold text-white">Recent Expenses</h2>
+					<div className="space-y-4 mb-4">
+						<div className="flex items-center justify-between">
+							<h2 className="text-xl font-bold text-white">Expenses</h2>
+							<button
+								onClick={() => setShowFilters(!showFilters)}
+								className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors ${
+									showFilters || searchQuery || categoryFilter || payerFilter
+										? "bg-primary-500/20 text-primary-400"
+										: "bg-gray-800 text-gray-400 hover:text-white"
+								}`}
+							>
+								<Filter className="w-4 h-4" />
+								<span className="hidden sm:inline">Filters</span>
+								{(searchQuery || categoryFilter || payerFilter) && (
+									<span className="w-2 h-2 rounded-full bg-primary-500" />
+								)}
+							</button>
+						</div>
+
+						{/* Search and Filters */}
+						{showFilters && (
+							<motion.div
+								initial={{ opacity: 0, height: 0 }}
+								animate={{ opacity: 1, height: "auto" }}
+								exit={{ opacity: 0, height: 0 }}
+								className="space-y-3 p-4 rounded-xl bg-gray-800/50 border border-gray-700"
+							>
+								{/* Search */}
+								<div className="relative">
+									<Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+									<Input
+										placeholder="Search expenses..."
+										value={searchQuery}
+										onChange={(e) => setSearchQuery(e.target.value)}
+										className="pl-10 bg-gray-900 border-gray-700 text-white placeholder:text-gray-500"
+									/>
+								</div>
+
+								{/* Filter row */}
+								<div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+									{/* Category filter */}
+									<select
+										value={categoryFilter}
+										onChange={(e) => setCategoryFilter(e.target.value)}
+										className="w-full px-3 py-2 rounded-lg bg-gray-900 border border-gray-700 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+									>
+										<option value="">All Categories</option>
+										{EXPENSE_CATEGORIES.map((cat) => (
+											<option key={cat} value={cat}>
+												{cat}
+											</option>
+										))}
+									</select>
+
+									{/* Payer filter */}
+									<select
+										value={payerFilter}
+										onChange={(e) => setPayerFilter(e.target.value)}
+										className="w-full px-3 py-2 rounded-lg bg-gray-900 border border-gray-700 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+									>
+										<option value="">All Payers</option>
+										{group?.members.map((member) => {
+											const memberUser = typeof member.userId === "object" && member.userId ? member.userId : null;
+											const userId = memberUser?._id || "";
+											const userName = memberUser?.name || "Unknown";
+											return (
+												<option key={userId} value={userId}>
+													{userName}
+												</option>
+											);
+										})}
+									</select>
+
+									{/* Sort */}
+									<select
+										value={sortBy}
+										onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+										className="w-full px-3 py-2 rounded-lg bg-gray-900 border border-gray-700 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+									>
+										<option value="date-desc">Newest First</option>
+										<option value="date-asc">Oldest First</option>
+										<option value="amount-desc">Highest Amount</option>
+										<option value="amount-asc">Lowest Amount</option>
+									</select>
+								</div>
+
+								{/* Clear filters */}
+								{(searchQuery || categoryFilter || payerFilter) && (
+									<button
+										onClick={() => {
+											setSearchQuery("");
+											setCategoryFilter("");
+											setPayerFilter("");
+										}}
+										className="text-sm text-gray-400 hover:text-white"
+									>
+										Clear all filters
+									</button>
+								)}
+							</motion.div>
+						)}
 					</div>
 
 					<Dialog
@@ -817,11 +967,32 @@ export default function GroupDetailPage() {
 												</FormItem>
 											)}
 										/>
-										<div className="space-y-2">
+										<div className="space-y-3">
+											<FormLabel className="text-gray-300">
+												Split Type
+											</FormLabel>
+											{/* Split type selector */}
+											<div className="flex rounded-lg bg-gray-800 p-1">
+												{(["equal", "custom", "percentage"] as SplitType[]).map((type) => (
+													<button
+														key={type}
+														type="button"
+														onClick={() => setSplitType(type)}
+														className={`flex-1 py-1.5 px-3 rounded-md text-sm font-medium transition-colors ${
+															splitType === type
+																? "bg-primary-600 text-white"
+																: "text-gray-400 hover:text-white"
+														}`}
+													>
+														{type === "equal" ? "Equal" : type === "custom" ? "Custom" : "%"}
+													</button>
+												))}
+											</div>
+
 											<FormLabel className="text-gray-300">
 												Split with ({selectedMembers.length} selected)
 											</FormLabel>
-											<div className="space-y-2 max-h-40 overflow-y-auto bg-gray-800/50 rounded p-2">
+											<div className="space-y-2 max-h-48 overflow-y-auto bg-gray-800/50 rounded p-2">
 												{group?.members.map((member) => {
 													const memberUser =
 														typeof member.userId === "object" && member.userId
@@ -832,39 +1003,111 @@ export default function GroupDetailPage() {
 															? member.userId._id
 															: member.userId;
 													const userName = memberUser?.name || "Unknown User";
+													const isSelected = selectedMembers.includes(userId);
+													const equalShare = form.watch("amount") && selectedMembers.length > 0
+														? form.watch("amount") / selectedMembers.length
+														: 0;
 
 													return (
-														<label
+														<div
 															key={userId}
-															className="flex items-center gap-2 p-2 rounded hover:bg-gray-700 cursor-pointer transition-colors"
+															className={`flex items-center gap-2 p-2 rounded transition-colors ${
+																isSelected ? "bg-gray-700/50" : "hover:bg-gray-700/30"
+															}`}
 														>
 															<input
 																type="checkbox"
-																checked={selectedMembers.includes(userId)}
+																checked={isSelected}
 																onChange={(e) => {
 																	if (e.target.checked) {
-																		setSelectedMembers([
-																			...selectedMembers,
-																			userId,
-																		]);
+																		setSelectedMembers([...selectedMembers, userId]);
 																	} else {
-																		setSelectedMembers(
-																			selectedMembers.filter(
-																				(id) => id !== userId,
-																			),
-																		);
+																		setSelectedMembers(selectedMembers.filter((id) => id !== userId));
+																		// Also remove from custom amounts/percentages
+																		const newAmounts = { ...customAmounts };
+																		delete newAmounts[userId];
+																		setCustomAmounts(newAmounts);
+																		const newPercents = { ...customPercentages };
+																		delete newPercents[userId];
+																		setCustomPercentages(newPercents);
 																	}
 																}}
-																className="w-4 h-4 accent-primary-500"
+																className="w-4 h-4 accent-primary-500 flex-shrink-0"
 															/>
-															<span className="text-white text-sm">
+															<span className="text-white text-sm flex-1 truncate">
 																{userName}
 																{userId === user?._id && " (You)"}
 															</span>
-														</label>
+
+															{/* Show amount/percentage input for custom splits */}
+															{isSelected && splitType === "custom" && (
+																<div className="flex items-center gap-1">
+																	<span className="text-gray-400 text-xs">₹</span>
+																	<input
+																		type="number"
+																		step="0.01"
+																		min="0"
+																		value={customAmounts[userId] || ""}
+																		onChange={(e) => {
+																			setCustomAmounts({
+																				...customAmounts,
+																				[userId]: parseFloat(e.target.value) || 0,
+																			});
+																		}}
+																		placeholder="0"
+																		className="w-20 px-2 py-1 text-sm bg-gray-800 border border-gray-600 rounded text-white"
+																	/>
+																</div>
+															)}
+
+															{isSelected && splitType === "percentage" && (
+																<div className="flex items-center gap-1">
+																	<input
+																		type="number"
+																		step="1"
+																		min="0"
+																		max="100"
+																		value={customPercentages[userId] || ""}
+																		onChange={(e) => {
+																			setCustomPercentages({
+																				...customPercentages,
+																				[userId]: parseFloat(e.target.value) || 0,
+																			});
+																		}}
+																		placeholder="0"
+																		className="w-16 px-2 py-1 text-sm bg-gray-800 border border-gray-600 rounded text-white"
+																	/>
+																	<span className="text-gray-400 text-xs">%</span>
+																</div>
+															)}
+
+															{/* Show equal share amount */}
+															{isSelected && splitType === "equal" && equalShare > 0 && (
+																<span className="text-gray-400 text-xs">
+																	₹{equalShare.toFixed(2)}
+																</span>
+															)}
+														</div>
 													);
 												})}
 											</div>
+
+											{/* Show totals for custom splits */}
+											{splitType === "custom" && selectedMembers.length > 0 && (
+												<div className="text-xs text-gray-400">
+													Total: ₹{selectedMembers.reduce((sum, id) => sum + (customAmounts[id] || 0), 0).toFixed(2)}
+													{form.watch("amount") && (
+														<> / ₹{form.watch("amount").toFixed(2)}</>
+													)}
+												</div>
+											)}
+											{splitType === "percentage" && selectedMembers.length > 0 && (
+												<div className="text-xs text-gray-400">
+													Total: {selectedMembers.reduce((sum, id) => sum + (customPercentages[id] || 0), 0).toFixed(1)}%
+													{" / 100%"}
+												</div>
+											)}
+
 											{selectedMembers.length === 0 && pendingEmails.length === 0 && (
 												<p className="text-red-500 text-xs mt-1">
 													Select at least one person or add an email
@@ -949,17 +1192,82 @@ export default function GroupDetailPage() {
 						</DialogContent>
 					</Dialog>
 
-					{expenses.length === 0 ? (
-						<div className="text-center py-12 bg-gray-900/30 rounded-xl border border-gray-800">
-							<Receipt className="w-12 h-12 text-gray-600 mx-auto mb-3" />
-							<p className="text-gray-400">No expenses yet</p>
-							<p className="text-gray-500 text-sm">
-								Add an expense to get started
-							</p>
-						</div>
-					) : (
-						<div className="space-y-3">
-							{expenses.map((expense, index) => {
+					{(() => {
+						// Apply filters and sorting
+						let filteredExpenses = [...expenses];
+
+						// Search filter
+						if (searchQuery) {
+							const query = searchQuery.toLowerCase();
+							filteredExpenses = filteredExpenses.filter((expense) =>
+								expense.description.toLowerCase().includes(query)
+							);
+						}
+
+						// Category filter
+						if (categoryFilter) {
+							filteredExpenses = filteredExpenses.filter(
+								(expense) => expense.category === categoryFilter
+							);
+						}
+
+						// Payer filter
+						if (payerFilter) {
+							filteredExpenses = filteredExpenses.filter((expense) => {
+								const paidById = typeof expense.paidBy === "object" && expense.paidBy
+									? expense.paidBy._id
+									: expense.paidBy;
+								return paidById === payerFilter;
+							});
+						}
+
+						// Sort
+						filteredExpenses.sort((a, b) => {
+							switch (sortBy) {
+								case "date-asc":
+									return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+								case "amount-desc":
+									return b.amount - a.amount;
+								case "amount-asc":
+									return a.amount - b.amount;
+								case "date-desc":
+								default:
+									return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+							}
+						});
+
+						if (expenses.length === 0) {
+							return (
+								<div className="text-center py-12 bg-gray-900/30 rounded-xl border border-gray-800">
+									<Receipt className="w-12 h-12 text-gray-600 mx-auto mb-3" />
+									<p className="text-gray-400">No expenses yet</p>
+									<p className="text-gray-500 text-sm">
+										Add an expense to get started
+									</p>
+								</div>
+							);
+						}
+
+						if (filteredExpenses.length === 0) {
+							return (
+								<div className="text-center py-12 bg-gray-900/30 rounded-xl border border-gray-800">
+									<Search className="w-12 h-12 text-gray-600 mx-auto mb-3" />
+									<p className="text-gray-400">No expenses found</p>
+									<p className="text-gray-500 text-sm">
+										Try adjusting your search or filters
+									</p>
+								</div>
+							);
+						}
+
+						return (
+							<div className="space-y-3">
+								{filteredExpenses.length !== expenses.length && (
+									<p className="text-gray-500 text-sm">
+										Showing {filteredExpenses.length} of {expenses.length} expenses
+									</p>
+								)}
+								{filteredExpenses.map((expense, index) => {
 								const paidByUser =
 									typeof expense.paidBy === "object" && expense.paidBy
 										? expense.paidBy
@@ -1021,8 +1329,9 @@ export default function GroupDetailPage() {
 									</motion.div>
 								);
 							})}
-						</div>
-					)}
+							</div>
+						);
+					})()}
 				</div>
 
 				{/* Expense Detail Modal */}

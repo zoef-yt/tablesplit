@@ -15,7 +15,7 @@ router.use(authenticateToken);
  */
 router.post('/', validate(schemas.createExpense), async (req: AuthRequest, res: Response, next) => {
   try {
-    const { groupId, description, amount, paidBy, selectedMembers, category, pendingEmails } = req.body;
+    const { groupId, description, amount, paidBy, selectedMembers, category, pendingEmails, customSplits } = req.body;
 
     const result = await expenseService.createExpense(
       req.userId!,
@@ -25,7 +25,8 @@ router.post('/', validate(schemas.createExpense), async (req: AuthRequest, res: 
       paidBy,
       selectedMembers,
       category,
-      pendingEmails
+      pendingEmails,
+      customSplits
     );
 
     // Emit real-time update to all clients in the group
