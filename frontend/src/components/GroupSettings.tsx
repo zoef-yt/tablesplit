@@ -49,10 +49,14 @@ interface PendingInvite {
 interface GroupSettingsProps {
 	group: Group;
 	currentUserId: string;
+	open?: boolean;
+	onOpenChange?: (open: boolean) => void;
 }
 
-export function GroupSettings({ group, currentUserId }: GroupSettingsProps) {
-	const [isOpen, setIsOpen] = useState(false);
+export function GroupSettings({ group, currentUserId, open, onOpenChange }: GroupSettingsProps) {
+	const [internalOpen, setInternalOpen] = useState(false);
+	const isOpen = open ?? internalOpen;
+	const setIsOpen = onOpenChange ?? setInternalOpen;
 	const [isEditingName, setIsEditingName] = useState(false);
 	const [editedName, setEditedName] = useState(group.name);
 	const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
