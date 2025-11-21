@@ -114,9 +114,8 @@ const userStatsSchema = new Schema<IUserStats>(
   }
 );
 
-// Index for quick lookups
-userStatsSchema.index({ userId: 1 });
-userStatsSchema.index({ xp: -1 }); // For leaderboards
+// Index for leaderboards
+userStatsSchema.index({ xp: -1 });
 userStatsSchema.index({ level: -1 });
 
 export const UserStats = mongoose.model<IUserStats>('UserStats', userStatsSchema);
