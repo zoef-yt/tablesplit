@@ -108,18 +108,10 @@ export function GroupSettings({ group, currentUserId }: GroupSettingsProps) {
 			</DialogTrigger>
 			<DialogContent className="bg-gray-900 border-gray-800 max-w-2xl">
 				<DialogHeader>
-					<div className="flex items-center justify-between">
-						<DialogTitle className="text-white text-xl flex items-center gap-2">
-							<Settings className="w-5 h-5 text-primary-500" />
-							Group Settings
-						</DialogTitle>
-						<button
-							onClick={() => setIsOpen(false)}
-							className="p-1 hover:bg-gray-800 rounded-full transition-colors"
-						>
-							<X className="w-5 h-5 text-gray-400" />
-						</button>
-					</div>
+					<DialogTitle className="text-white text-xl flex items-center gap-2">
+						<Settings className="w-5 h-5 text-primary-500" />
+						Group Settings
+					</DialogTitle>
 				</DialogHeader>
 
 				<div className="space-y-6 mt-4">

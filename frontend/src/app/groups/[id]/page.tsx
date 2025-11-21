@@ -864,14 +864,18 @@ export default function GroupDetailPage() {
 				{/* Floating Add Expense Button */}
 				<motion.button
 					onClick={() => setIsExpenseDialogOpen(true)}
-					className="fixed bottom-6 right-6 bg-primary-600 hover:bg-primary-700 text-white rounded-full p-4 shadow-lg hover:shadow-xl transition-all z-50"
+					className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 bg-primary-600 hover:bg-primary-700 text-white rounded-full p-3 sm:p-4 shadow-lg hover:shadow-xl transition-all z-50"
+					style={{
+						maxWidth: 'calc(100vw - 2rem)',
+						marginBottom: 'env(safe-area-inset-bottom, 0px)'
+					}}
 					whileHover={{ scale: 1.1 }}
 					whileTap={{ scale: 0.95 }}
 					initial={{ scale: 0 }}
 					animate={{ scale: 1 }}
 					transition={{ type: "spring", stiffness: 260, damping: 20 }}
 				>
-					<Plus className="w-6 h-6" />
+					<Plus className="w-5 h-5 sm:w-6 sm:h-6" />
 				</motion.button>
 			</div>
 		</div>
